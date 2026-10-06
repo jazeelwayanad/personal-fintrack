@@ -49,12 +49,11 @@ class Ledger extends ChangeNotifier {
 
   Future<void> login(
     String email,
-    String password,
-    String url, {
+    String password, {
     bool register = false,
     String name = '',
   }) async {
-    await api.login(email, password, url, register: register, name: name);
+    await api.login(email, password, register: register, name: name);
     await open();
     notifyListeners();
   }

@@ -19,13 +19,19 @@ final router = GoRouter(
   routes: [
     GoRoute(
       path: '/',
-      builder: (context, state) => const FinScreen(screen: 'home'),
+      pageBuilder: (context, state) => NoTransitionPage<void>(
+        key: state.pageKey,
+        child: const FinScreen(screen: 'home'),
+      ),
     ),
     GoRoute(
       path: '/:screen',
-      builder: (context, state) => FinScreen(
-        screen: state.pathParameters['screen'] ?? 'home',
-        occurrenceId: state.uri.queryParameters['occurrence'],
+      pageBuilder: (context, state) => NoTransitionPage<void>(
+        key: state.pageKey,
+        child: FinScreen(
+          screen: state.pathParameters['screen'] ?? 'home',
+          occurrenceId: state.uri.queryParameters['occurrence'],
+        ),
       ),
     ),
   ],

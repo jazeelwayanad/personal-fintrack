@@ -14,17 +14,9 @@ class PushNotifications {
   bool ready = false;
   PushNotifications(this.api, this.navigate);
   Future<void> initialize() async {
-    const projectId = String.fromEnvironment('FIREBASE_PROJECT_ID');
-    if (projectId.isEmpty || ready) return;
+    if (ready) return;
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: const FirebaseOptions(
-          apiKey: String.fromEnvironment('FIREBASE_API_KEY'),
-          appId: String.fromEnvironment('FIREBASE_APP_ID'),
-          messagingSenderId: String.fromEnvironment('FIREBASE_SENDER_ID'),
-          projectId: projectId,
-        ),
-      );
+      await Firebase.initializeApp();
     }
     await local.initialize(
       settings: const InitializationSettings(
@@ -79,7 +71,7 @@ class PushNotifications {
     if (!ready) {
       throw ApiException(
         503,
-        'Firebase setup is still needed for push notifications. Your in-app reminders are available.',
+        'Push notifications are unavailable. Your in-app reminders are available.',
       );
     }
     final permission = await FirebaseMessaging.instance.requestPermission();

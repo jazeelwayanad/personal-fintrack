@@ -801,10 +801,6 @@ class _FinScreenState extends ConsumerState<FinScreen>
           Text(
             '${ledger.status}\n${ledger.queue.length} pending changes\nLast synced: ${ledger.lastSync ?? 'Never'}',
           ),
-          Text(
-            ledger.api.baseUrl,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
           for (final q in ledger.queue.where(
             (q) => q.containsKey('conflict') || q.containsKey('error'),
           ))
@@ -957,7 +953,6 @@ class _LoginScreenState extends State<LoginScreen> {
       email = TextEditingController(),
       password = TextEditingController(),
       name = TextEditingController();
-  late final server = TextEditingController(text: widget.ledger.api.baseUrl);
   bool register = false, busy = false, obscure = true;
   String? error;
   @override
@@ -965,7 +960,6 @@ class _LoginScreenState extends State<LoginScreen> {
     email.dispose();
     password.dispose();
     name.dispose();
-    server.dispose();
     super.dispose();
   }
 
@@ -1058,7 +1052,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             await widget.ledger.login(
                               email.text.trim(),
                               password.text,
-                              server.text,
                               register: register,
                               name: name.text.trim(),
                             );
@@ -1085,18 +1078,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? 'Already have an account? Sign in'
                         : 'Create an account',
                   ),
-                ),
-                ExpansionTile(
-                  title: const Text('Server connection'),
-                  children: [
-                    TextFormField(
-                      controller: server,
-                      decoration: const InputDecoration(
-                        labelText: 'FinTrack server URL',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
                 ),
                 const SizedBox(height: 12),
                 const Text(

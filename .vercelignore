@@ -1,4 +1,6 @@
 mobile/
+artifacts/
+.local/
 tests/
 fixtures/
 scratch/

@@ -27,8 +27,12 @@ class CloudApi {
   Future<void> restore() async {
     final saved = await storage.read(key: 'fintrack-session');
     if (saved != null) {
-      session = jsonDecode(saved);
-      baseUrl = session!['baseUrl'];
+      final restored = jsonDecode(saved) as Data;
+      if (restored['baseUrl'] == baseUrl) {
+        session = restored;
+      } else {
+        await storage.delete(key: 'fintrack-session');
+      }
     }
   }
 
@@ -108,18 +112,16 @@ class CloudApi {
       storage.write(key: 'fintrack-session', value: jsonEncode(session));
   Future<void> login(
     String email,
-    String password,
-    String url, {
+    String password, {
     bool register = false,
     String name = '',
   }) async {
-    final uri = Uri.tryParse(url.trim());
+    final uri = Uri.tryParse(baseUrl);
     if (uri == null ||
         !uri.hasAuthority ||
         (uri.scheme != 'https' && !(kDebugMode && uri.scheme == 'http'))) {
-      throw ApiException(400, 'Use an HTTPS server address.');
+      throw ApiException(400, 'FinTrack server configuration is invalid.');
     }
-    baseUrl = url.trim().replaceAll(RegExp(r'/+$'), '');
     session = await _send(
       '/api/v1/auth/${register ? 'register' : 'login'}',
       'POST',

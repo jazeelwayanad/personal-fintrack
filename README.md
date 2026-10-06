@@ -38,7 +38,7 @@ The mobile ledger is stored in account-specific SQLite and the web ledger in acc
 
 ## Notifications and deployment
 
-In-app reminders work without notification credentials. For Android push, create a Firebase project for application ID `com.jazeelwayanad.fintrack`, enable Cloud Messaging, and set `FIREBASE_SERVICE_ACCOUNT` on Vercel to the service account JSON. Build Android with `--dart-define=FIREBASE_PROJECT_ID=...`, `--dart-define=FIREBASE_API_KEY=...`, `--dart-define=FIREBASE_APP_ID=...`, and `--dart-define=FIREBASE_SENDER_ID=...`. These Firebase client identifiers are public configuration; keep the service account JSON private. A foreground message is displayed locally; Android handles background notification display. The app registers or removes its token after the user enables notifications or signs out.
+In-app reminders work without push permission. The Android app is registered in Firebase as `com.jazeelwayanad.fintrack`, and its non-secret `google-services.json` is included in the Android project. The server reads its private Firebase service-account JSON from Vercel's `FIREBASE_SERVICE_ACCOUNT` secret; never commit that key. Build the APK with `flutter build apk --release`. A foreground message is displayed locally; Android handles background notification display. The app registers or removes its token after the user enables notifications or signs out. The FinTrack server URL is built into the app, so the sign-in screen does not require a server setting.
 
 For browser push, generate a VAPID key pair and set `NEXT_PUBLIC_WEB_PUSH_KEY`, `WEB_PUSH_PRIVATE_KEY`, and `WEB_PUSH_SUBJECT=mailto:you@example.com` on Vercel. The site uses its PWA service worker to display and open reminders.
 
