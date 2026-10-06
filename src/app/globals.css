@@ -205,3 +205,109 @@
     background: oklch(0.6 0 0 / 40%);
   }
 }
+
+/* FinTrack's mint and citrus interface, shared with the Android app. */
+:root {
+  --background: #dcefe7;
+  --foreground: #171b19;
+  --card: #ffffff;
+  --card-foreground: #171b19;
+  --popover: #ffffff;
+  --popover-foreground: #171b19;
+  --primary: #171b19;
+  --primary-foreground: #ffffff;
+  --secondary: #e8f5e9;
+  --secondary-foreground: #17372a;
+  --muted: #eef5ee;
+  --muted-foreground: #68736b;
+  --accent: #f5ff76;
+  --accent-foreground: #171b19;
+  --border: #c9ded2;
+  --input: #d8e6dc;
+  --ring: #4b9d81;
+  --radius: 1.4rem;
+  --income: #298a50;
+  --expense: #bd4742;
+  --chart-1: #171b19;
+  --chart-2: #62a783;
+  --chart-3: #f5ff76;
+  --chart-4: #8dbca7;
+  --chart-5: #bd4742;
+  --sidebar: #dcefe7;
+  --sidebar-foreground: #171b19;
+  --sidebar-primary: #171b19;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8f5e9;
+  --sidebar-accent-foreground: #17372a;
+  --sidebar-border: #c9ded2;
+  --sidebar-ring: #4b9d81;
+}
+
+.dark {
+  --background: #14221c;
+  --foreground: #eff7ed;
+  --card: #203128;
+  --card-foreground: #eff7ed;
+  --popover: #203128;
+  --popover-foreground: #eff7ed;
+  --primary: #e4f69a;
+  --primary-foreground: #14221c;
+  --secondary: #2d4034;
+  --secondary-foreground: #eff7ed;
+  --muted: #2d4034;
+  --muted-foreground: #b4c3b6;
+  --accent: #a5bc67;
+  --accent-foreground: #14221c;
+  --border: #3c5545;
+  --input: #3c5545;
+  --ring: #e4f69a;
+  --income: #70d091;
+  --expense: #ef8d82;
+  --chart-1: #e4f69a;
+  --chart-2: #70d091;
+  --chart-3: #afcb75;
+  --chart-4: #75a88a;
+  --chart-5: #ef8d82;
+  --sidebar: #14221c;
+  --sidebar-foreground: #eff7ed;
+  --sidebar-primary: #e4f69a;
+  --sidebar-primary-foreground: #14221c;
+  --sidebar-accent: #2d4034;
+  --sidebar-accent-foreground: #eff7ed;
+  --sidebar-border: #3c5545;
+  --sidebar-ring: #e4f69a;
+}
+
+body {
+  background:
+    radial-gradient(circle at 76% 12%, rgb(192 225 174 / 48%), transparent 42%),
+    linear-gradient(145deg, #e1f2ed 0%, #d4ebd1 100%);
+  background-attachment: fixed;
+}
+
+.dark body {
+  background: linear-gradient(145deg, #14221c 0%, #1b3024 100%);
+}
+
+.fin-panel {
+  border: 1px solid rgb(255 255 255 / 64%);
+  border-radius: 1.75rem;
+  background: var(--card);
+  box-shadow: 0 18px 40px rgb(29 76 50 / 6%);
+}
+
+.dark .fin-panel { border-color: var(--border); }
+
+.fin-balance-card {
+  border: 8px solid white;
+  border-radius: 2.2rem;
+  background: #f5ff76;
+  color: #171b19;
+  box-shadow: 0 20px 45px rgb(97 119 42 / 12%);
+}
+
+.fin-activity-row {
+  border-radius: 1.25rem;
+  background: var(--card);
+  box-shadow: 0 7px 18px rgb(36 86 55 / 5%);
+}

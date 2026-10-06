@@ -9,7 +9,7 @@ import 'ui/screens.dart';
 final ledgerProvider = ChangeNotifierProvider<Ledger>(
   (ref) => Ledger(CloudApi())..initialize(),
 );
-final themeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
+final themeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.light);
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const ProviderScope(child: FinTrackApp()));
@@ -41,22 +41,77 @@ class FinTrackApp extends ConsumerWidget {
   const FinTrackApp({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ThemeData theme(Brightness brightness) => ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xff7c3aed),
-        brightness: brightness,
-      ),
-      scaffoldBackgroundColor: brightness == Brightness.light
-          ? const Color(0xfff8f7fc)
-          : const Color(0xff111018),
-      inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(14)),
+    ThemeData theme(Brightness brightness) {
+      final dark = brightness == Brightness.dark;
+      final colors =
+          ColorScheme.fromSeed(
+            seedColor: const Color(0xff79b7a5),
+            brightness: brightness,
+          ).copyWith(
+            primary: dark ? const Color(0xffddf6a5) : const Color(0xff171b19),
+            onPrimary: dark ? const Color(0xff171b19) : Colors.white,
+            primaryContainer: dark
+                ? const Color(0xff34483e)
+                : const Color(0xffe6f4e9),
+            onPrimaryContainer: dark ? Colors.white : const Color(0xff17372a),
+          );
+      return ThemeData(
+        useMaterial3: true,
+        colorScheme: colors,
+        scaffoldBackgroundColor: dark
+            ? const Color(0xff141c19)
+            : const Color(0xffdcefe7),
+        appBarTheme: AppBarTheme(
+          backgroundColor: dark
+              ? const Color(0xff141c19)
+              : const Color(0xffdcefe7),
+          elevation: 0,
+          scrolledUnderElevation: 0,
         ),
-      ),
-      cardTheme: const CardThemeData(margin: EdgeInsets.zero, elevation: 0),
-    );
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: dark ? const Color(0xff25332c) : const Color(0xfff8faf8),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+              color: colors.outlineVariant.withValues(alpha: .55),
+            ),
+          ),
+        ),
+        cardTheme: const CardThemeData(margin: EdgeInsets.zero, elevation: 0),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: dark ? const Color(0xff1e2a24) : Colors.white,
+          indicatorColor: colors.primaryContainer,
+          elevation: 0,
+          height: 74,
+          labelTextStyle: WidgetStatePropertyAll(
+            TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: colors.onSurface,
+            ),
+          ),
+        ),
+      );
+    }
+
     return MaterialApp.router(
       title: 'FinTrack',
       debugShowCheckedModeBanner: false,

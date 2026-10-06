@@ -18,23 +18,82 @@ Future<void> editRecord(
     occurrenceId: occurrenceId,
   ),
 );
-Future<bool> confirm(BuildContext context, String message) async =>
-    await showDialog<bool>(
+Future<bool> confirm(
+  BuildContext context,
+  String message, {
+  String title = 'Please confirm',
+  String action = 'Continue',
+  bool destructive = false,
+}) async =>
+    await showModalBottomSheet<bool>(
       context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('Please confirm'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(c, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(c, true),
-            child: const Text('Confirm'),
-          ),
-        ],
+      useSafeArea: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
+      builder: (sheetContext) {
+        final colors = Theme.of(sheetContext).colorScheme;
+        final accent = destructive ? colors.error : colors.primary;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            8,
+            24,
+            MediaQuery.paddingOf(sheetContext).bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 25,
+                backgroundColor: accent.withValues(alpha: .12),
+                child: Icon(
+                  destructive
+                      ? Icons.delete_outline_rounded
+                      : Icons.info_outline_rounded,
+                  color: accent,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                title,
+                style: Theme.of(sheetContext).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(message, style: Theme.of(sheetContext).textTheme.bodyLarge),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(sheetContext, false),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      style: destructive
+                          ? FilledButton.styleFrom(
+                              backgroundColor: colors.error,
+                            )
+                          : null,
+                      onPressed: () => Navigator.pop(sheetContext, true),
+                      child: Text(action),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     ) ??
     false;
 
@@ -67,7 +126,7 @@ class _RecordEditorState extends State<RecordEditor> {
                 'date': todayIndia(),
                 'startDate': todayIndia(),
                 'reminders': true,
-                'color': '#8b5cf6',
+                'color': '#74aa89',
                 'amount': 0,
                 'description': '',
                 'icon': '',
@@ -223,6 +282,8 @@ class _RecordEditorState extends State<RecordEditor> {
           if (!await confirm(
             context,
             'This exceeds your allowance by ${rupees(amount(check, 'shortfall'))}. Record anyway?',
+            title: 'Over your limit',
+            action: 'Record anyway',
           )) {
             return;
           }
@@ -295,138 +356,208 @@ class _RecordEditorState extends State<RecordEditor> {
       amount(data, 'amount'),
       text(data, 'categoryId'),
     );
-    return AlertDialog(
-      title: Text(
-        '${isExisting ? 'Edit' : 'Add'} ${kind == 'paymentMethod' ? 'payment method' : kind}',
-      ),
-      content: SizedBox(
-        width: 440,
-        child: SingleChildScrollView(
-          child: Form(
-            key: form,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (['category', 'paymentMethod', 'plan'].contains(kind))
-                  field('name', 'Name'),
-                if (['transaction', 'category', 'plan'].contains(kind))
-                  select('type', 'Type', [
-                    ('income', 'Income'),
-                    ('expense', 'Expense'),
-                  ]),
-                if (kind == 'plan')
-                  select(
-                    'planType',
-                    'Plan type',
-                    (text(data, 'type') == 'income'
-                            ? ['salary', 'income']
-                            : ['emi', 'subscription', 'expense'])
-                        .map((v) => (v, v == 'emi' ? 'EMI' : v))
-                        .toList(),
+    final title =
+        '${isExisting ? 'Edit' : 'Add'} ${kind == 'paymentMethod' ? 'payment method' : kind}';
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 480,
+          maxHeight:
+              MediaQuery.sizeOf(context).height -
+              MediaQuery.viewInsetsOf(context).bottom -
+              48,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer,
+                    child: Icon(
+                      kind == 'transaction'
+                          ? Icons.swap_horiz_rounded
+                          : Icons.edit_note_rounded,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
                   ),
-                if ([
-                  'transaction',
-                  'plan',
-                  'budget',
-                  'adjustment',
-                ].contains(kind))
-                  field('amount', 'Amount (₹)', money: true),
-                if (['transaction', 'plan', 'budget'].contains(kind))
-                  select(
-                    'categoryId',
-                    'Category',
-                    categories
-                        .map((r) => (r.id, text(r.data, 'name')))
-                        .toList(),
-                  ),
-                if (kind == 'transaction')
-                  select(
-                    'paymentMethodId',
-                    'Payment method',
-                    methods.map((r) => (r.id, text(r.data, 'name'))).toList(),
-                  ),
-                if (['transaction', 'adjustment'].contains(kind))
-                  date('date', 'Date'),
-                if (['transaction', 'adjustment'].contains(kind))
-                  field('description', 'Note', required: false),
-                if (kind == 'plan') ...[
-                  date('startDate', 'First due date / payday'),
-                  date(
-                    'endDate',
-                    'Final payment date (optional)',
-                    optional: true,
-                  ),
-                  select('recurrence', 'Repeat', [
-                    ('once', 'One time'),
-                    ('monthly', 'Monthly'),
-                    ('yearly', 'Yearly'),
-                  ]),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Payment reminders'),
-                    value: data['reminders'] != false,
-                    onChanged: (v) => setState(() => data['reminders'] = v),
-                  ),
-                ],
-                if (kind == 'preferences') ...[
-                  field('payday', 'Monthly payday (1–31)', integer: true),
-                  field(
-                    'savings',
-                    'Protected savings / emergency money (₹)',
-                    money: true,
-                  ),
-                  select('limitMode', 'Over-limit behavior', [
-                    ('warn', 'Warn and allow confirmation'),
-                    ('block', 'Block planned spending'),
-                  ]),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Daily reminders'),
-                    value: data['notifications'] != false,
-                    onChanged: (v) => setState(() => data['notifications'] = v),
-                  ),
-                ],
-                if (expense) ...[
-                  Text('Available: ${rupees(amount(check, 'maximum'))}'),
-                  if (amount(check, 'shortfall') > 0)
-                    Text(
-                      'Shortfall: ${rupees(amount(check, 'shortfall'))}',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Already spent'),
-                    subtitle: const Text(
-                      'Record an actual expense even when over limit',
-                    ),
-                    value: alreadySpent,
-                    onChanged: (v) => setState(() => alreadySpent = v ?? false),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: busy ? null : () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
                   ),
                 ],
-                if (error != null)
-                  Text(
-                    error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(height: 16),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: form,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if ([
+                          'category',
+                          'paymentMethod',
+                          'plan',
+                        ].contains(kind))
+                          field('name', 'Name'),
+                        if (['transaction', 'category', 'plan'].contains(kind))
+                          select('type', 'Type', [
+                            ('income', 'Income'),
+                            ('expense', 'Expense'),
+                          ]),
+                        if (kind == 'plan')
+                          select(
+                            'planType',
+                            'Plan type',
+                            (text(data, 'type') == 'income'
+                                    ? ['salary', 'income']
+                                    : ['emi', 'subscription', 'expense'])
+                                .map((v) => (v, v == 'emi' ? 'EMI' : v))
+                                .toList(),
+                          ),
+                        if ([
+                          'transaction',
+                          'plan',
+                          'budget',
+                          'adjustment',
+                        ].contains(kind))
+                          field('amount', 'Amount (₹)', money: true),
+                        if (['transaction', 'plan', 'budget'].contains(kind))
+                          select(
+                            'categoryId',
+                            'Category',
+                            categories
+                                .map((r) => (r.id, text(r.data, 'name')))
+                                .toList(),
+                          ),
+                        if (kind == 'transaction')
+                          select(
+                            'paymentMethodId',
+                            'Payment method',
+                            methods
+                                .map((r) => (r.id, text(r.data, 'name')))
+                                .toList(),
+                          ),
+                        if (['transaction', 'adjustment'].contains(kind))
+                          date('date', 'Date'),
+                        if (['transaction', 'adjustment'].contains(kind))
+                          field('description', 'Note', required: false),
+                        if (kind == 'plan') ...[
+                          date('startDate', 'First due date / payday'),
+                          date(
+                            'endDate',
+                            'Final payment date (optional)',
+                            optional: true,
+                          ),
+                          select('recurrence', 'Repeat', [
+                            ('once', 'One time'),
+                            ('monthly', 'Monthly'),
+                            ('yearly', 'Yearly'),
+                          ]),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Payment reminders'),
+                            value: data['reminders'] != false,
+                            onChanged: (v) =>
+                                setState(() => data['reminders'] = v),
+                          ),
+                        ],
+                        if (kind == 'preferences') ...[
+                          field(
+                            'payday',
+                            'Monthly payday (1–31)',
+                            integer: true,
+                          ),
+                          field(
+                            'savings',
+                            'Protected savings / emergency money (₹)',
+                            money: true,
+                          ),
+                          select('limitMode', 'Over-limit behavior', [
+                            ('warn', 'Warn and allow confirmation'),
+                            ('block', 'Block planned spending'),
+                          ]),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Daily reminders'),
+                            value: data['notifications'] != false,
+                            onChanged: (v) =>
+                                setState(() => data['notifications'] = v),
+                          ),
+                        ],
+                        if (expense) ...[
+                          Text(
+                            'Available: ${rupees(amount(check, 'maximum'))}',
+                          ),
+                          if (amount(check, 'shortfall') > 0)
+                            Text(
+                              'Shortfall: ${rupees(amount(check, 'shortfall'))}',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Already spent'),
+                            subtitle: const Text(
+                              'Record an actual expense even when over limit',
+                            ),
+                            value: alreadySpent,
+                            onChanged: (v) =>
+                                setState(() => alreadySpent = v ?? false),
+                          ),
+                        ],
+                        if (error != null)
+                          Text(
+                            error!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-              ],
-            ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: busy ? null : () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: busy ? null : save,
+                      child: Text(busy ? 'Saving…' : 'Save'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: busy ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: busy ? null : save,
-          child: Text(busy ? 'Saving…' : 'Save'),
-        ),
-      ],
     );
   }
 }

@@ -4,8 +4,8 @@
   "description": "Smart offline-first expense tracker",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1a1625",
-  "theme_color": "#7c3aed",
+  "background_color": "#dcefe7",
+  "theme_color": "#dcefe7",
   "orientation": "portrait",
   "scope": "/",
   "icons": [

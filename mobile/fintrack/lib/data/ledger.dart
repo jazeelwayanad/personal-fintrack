@@ -186,7 +186,7 @@ class Ledger extends ChangeNotifier {
             Doc(const Uuid().v4(), 'category', {
               'name': name,
               'type': 'expense',
-              'color': '#8b5cf6',
+              'color': '#74aa89',
               'icon': '',
             }),
           for (final name in ['Cash', 'Bank account', 'Card'])

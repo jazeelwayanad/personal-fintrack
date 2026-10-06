@@ -55,28 +55,28 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+    <div className="min-h-screen flex items-center justify-center p-4">
       {/* Background glow */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-primary/10 blur-[120px]" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-[#f5ff76]/45 blur-[120px]" />
       </div>
 
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-[2rem] bg-primary/15 border border-primary/30 flex items-center justify-center mx-auto mb-4 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
-            <Wallet className="w-10 h-10 text-primary" />
+          <div className="w-20 h-20 rounded-[2rem] bg-[#f5ff76] border border-white/80 flex items-center justify-center mx-auto mb-4 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
+            <Wallet className="w-10 h-10 text-[#171b19]" />
           </div>
-          <h1 className="text-4xl font-black tracking-tighter bg-gradient-to-br from-foreground via-foreground/90 to-foreground/50 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-black tracking-tighter text-foreground">
             FinTrack
           </h1>
           <p className="text-muted-foreground text-sm font-medium mt-2">Your personal finance tracker</p>
         </div>
 
         {/* Card */}
-        <div className="bg-background/60 backdrop-blur-2xl border border-border/40 rounded-[2rem] p-8 shadow-2xl">
+        <div className="fin-panel p-8">
           {/* Tab toggle */}
-          <div className="flex bg-card/60 p-1.5 rounded-2xl gap-1 shadow-inner border border-border/30 mb-8">
+          <div className="flex bg-[#edf6ee] p-1.5 rounded-2xl gap-1 mb-8 dark:bg-secondary">
             <button
               onClick={() => setMode("login")}
               className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ${

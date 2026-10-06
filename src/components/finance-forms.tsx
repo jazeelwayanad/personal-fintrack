@@ -4,12 +4,14 @@ import { Data, Document, Kind, document, defaults, string as s, number as n } fr
 import { checkSpending, occurrences, snapshotPast, todayIndia, rupees } from '@/lib/finance/engine';
 import { useFinance } from './finance-provider';
 import { toast } from 'sonner';
-export const inputClass = 'w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm';
-export const buttonClass = 'rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-40';
+import { useConfirm } from './confirm-dialog';
+export const inputClass = 'w-full rounded-2xl border border-border bg-[#f8faf8] px-4 py-3 text-sm outline-none focus:border-[#71ae91] focus:ring-2 focus:ring-[#71ae91]/25 dark:bg-secondary';
+export const buttonClass = 'rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:opacity-40';
 export function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="grid gap-1.5 text-sm font-medium">{label}{children}</label>; }
 export function Editor({ kind, initial, close, occurrenceId }: { kind: Kind; initial?: Document; close: () => void; occurrenceId?: string }) {
   const { store, records } = useFinance();
-  const [data, setData] = useState<Data>(initial?.data ?? (kind === 'preferences' ? { ...defaults } : { type: kind === 'plan' ? 'income' : 'expense', planType: 'salary', recurrence: 'monthly', date: todayIndia(), startDate: todayIndia(), reminders: true, color: '#8b5cf6', amount: 0, name: '', description: '' }));
+  const ask = useConfirm();
+  const [data, setData] = useState<Data>(initial?.data ?? (kind === 'preferences' ? { ...defaults } : { type: kind === 'plan' ? 'income' : 'expense', planType: 'salary', recurrence: 'monthly', date: todayIndia(), startDate: todayIndia(), reminders: true, color: '#74aa89', amount: 0, name: '', description: '' }));
   const [alreadySpent, setAlreadySpent] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const set = (key: string, value: unknown) => setData(d => ({ ...d, [key]: value }));
   const categories = records.filter(r => !r.deleted && r.kind === 'category' && s(r.data, 'type') === (kind === 'budget' ? 'expense' : s(data, 'type')));
@@ -27,7 +29,7 @@ export function Editor({ kind, initial, close, occurrenceId }: { kind: Kind; ini
       if (isExpense && !alreadySpent && !check.allowed) {
         const mode = records.find(r => !r.deleted && r.kind === 'preferences')?.data.limitMode;
         if (mode === 'block') throw new Error('Above your spending limit. Adjust your budget or choose Already spent.');
-        if (!confirm(`This exceeds your allowance by ${rupees(check.shortfall)}. Record it anyway?`)) return;
+        if (!await ask({ title: 'Over your limit', message: `This exceeds your allowance by ${rupees(check.shortfall)}.`, action: 'Record anyway' })) return;
       }
       const id = kind === 'preferences' ? 'preferences' : kind === 'budget' ? `budget:${s(data, 'categoryId')}` : initial?.id ?? crypto.randomUUID();
       const docs = kind === 'plan' && initial ? snapshotPast(records, initial.id, todayIndia()) : [];
@@ -43,7 +45,7 @@ export function Editor({ kind, initial, close, occurrenceId }: { kind: Kind; ini
       await store.save(docs); toast.success('Saved'); close();
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save'); } finally { setBusy(false); }
   }
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label={`${isExisting ? 'Edit' : 'Add'} ${kind}`}><form onSubmit={submit} className="max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-3xl bg-background p-6 shadow-xl"><div className="flex justify-between"><h2 className="text-xl font-bold">{isExisting ? 'Edit' : 'Add'} {kind === 'paymentMethod' ? 'payment method' : kind}</h2><button type="button" onClick={close} aria-label="Close">✕</button></div>
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label={`${isExisting ? 'Edit' : 'Add'} ${kind}`}><form onSubmit={submit} className="fin-panel max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto p-6 sm:p-7"><div className="flex justify-between"><h2 className="text-xl font-bold">{isExisting ? 'Edit' : 'Add'} {kind === 'paymentMethod' ? 'payment method' : kind}</h2><button type="button" onClick={close} aria-label="Close">✕</button></div>
     {['category', 'paymentMethod', 'plan'].includes(kind) && field('name', 'Name')}
     {['transaction', 'category', 'plan'].includes(kind) && select('type', 'Type', ['income', 'expense'].map(id => ({ id, label: id })))}
     {kind === 'plan' && select('planType', 'Plan type', (s(data, 'type') === 'income' ? ['salary', 'income'] : ['emi', 'subscription', 'expense']).map(id => ({ id, label: id === 'emi' ? 'EMI' : id })))}

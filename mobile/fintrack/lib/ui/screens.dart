@@ -49,9 +49,29 @@ class _FinScreenState extends ConsumerState<FinScreen>
 
   void notice(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      final colors = Theme.of(context).colorScheme;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: colors.inverseSurface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            content: Row(
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  color: colors.onInverseSurface,
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Text(message)),
+              ],
+            ),
+          ),
+        );
     }
   }
 
@@ -63,7 +83,16 @@ class _FinScreenState extends ConsumerState<FinScreen>
     }
   }
 
-  Widget panel(String title, List<Widget> children) => Card(
+  Widget panel(String title, List<Widget> children) => Container(
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(
+        color: Theme.of(
+          context,
+        ).colorScheme.outlineVariant.withValues(alpha: .38),
+      ),
+    ),
     child: Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -73,7 +102,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
             title,
             style: Theme.of(
               context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 16),
           ...children,
@@ -81,32 +110,133 @@ class _FinScreenState extends ConsumerState<FinScreen>
       ),
     ),
   );
-  Widget metric(String label, int value, {bool hero = false}) => Container(
-    padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      color: hero
-          ? Theme.of(context).colorScheme.primary
-          : Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(22),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(color: hero ? Colors.white70 : null)),
-        const SizedBox(height: 8),
-        Text(
-          rupees(value),
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: hero ? Colors.white : null,
+  Widget metric(String label, int value, {bool hero = false}) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: EdgeInsets.all(hero ? 24 : 20),
+      decoration: BoxDecoration(
+        color: hero ? const Color(0xfff5ff76) : colors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: hero
+            ? null
+            : Border.all(color: colors.outlineVariant.withValues(alpha: .38)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: hero
+                        ? const Color(0xff3c4420)
+                        : colors.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Icon(
+                hero
+                    ? Icons.auto_awesome_rounded
+                    : Icons.account_balance_wallet_outlined,
+                color: hero ? const Color(0xff171b19) : colors.primary,
+                size: 22,
+              ),
+            ],
           ),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 14),
+          Text(
+            rupees(value),
+            style: TextStyle(
+              fontSize: hero ? 34 : 28,
+              letterSpacing: -.8,
+              fontWeight: FontWeight.w800,
+              color: hero ? const Color(0xff171b19) : null,
+            ),
+          ),
+          if (hero) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Ready to spend after bills and savings',
+              style: TextStyle(color: Color(0xff52572c), fontSize: 12),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: [
+                  for (final action in [
+                    (Icons.arrow_upward_rounded, 'Spend', 'expense'),
+                    (Icons.arrow_downward_rounded, 'Income', 'income'),
+                    (Icons.event_note_rounded, 'Plans', 'plans'),
+                  ])
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () {
+                          if (action.$3 == 'plans') {
+                            context.go('/plans');
+                          } else {
+                            editRecord(
+                              context,
+                              ref.read(ledgerProvider),
+                              'transaction',
+                              initial: Doc(const Uuid().v4(), 'transaction', {
+                                'type': action.$3,
+                                'amount': 0,
+                                'date': todayIndia(),
+                                'description': '',
+                              }),
+                            );
+                          }
+                        },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              action.$1,
+                              size: 20,
+                              color: const Color(0xff171b19),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              action.$2,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xff171b19),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Future<void> remove(Ledger ledger, Doc record) async {
-    if (await confirm(context, 'Delete this item?')) {
+    final name = text(record.data, 'name').isNotEmpty
+        ? text(record.data, 'name')
+        : text(record.data, 'description').isNotEmpty
+        ? text(record.data, 'description')
+        : 'this item';
+    if (await confirm(
+      context,
+      'This will remove $name from your ledger.',
+      title: 'Delete this item?',
+      action: 'Delete',
+      destructive: true,
+    )) {
       await ledger.save([record.copy(deleted: true)]);
     }
   }
@@ -139,27 +269,66 @@ class _FinScreenState extends ConsumerState<FinScreen>
               text(r.data, 'type') == text(o.doc.data, 'type'),
         )
         .toList();
-    final selected = await showDialog<Doc>(
+    final selected = await showModalBottomSheet<Doc>(
       context: context,
-      builder: (c) => SimpleDialog(
-        title: const Text('Link existing transaction'),
-        children: available.isEmpty
-            ? [
+      useSafeArea: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * .72,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Link a transaction',
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Choose a recorded payment to match this plan.',
+                style: Theme.of(sheetContext).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              if (available.isEmpty)
                 const Padding(
-                  padding: EdgeInsets.all(20),
+                  padding: EdgeInsets.symmetric(vertical: 16),
                   child: Text('No matching unlinked transactions.'),
+                )
+              else
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: available.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (_, index) {
+                      final record = available[index];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          text(record.data, 'description').isEmpty
+                              ? 'Transaction'
+                              : text(record.data, 'description'),
+                        ),
+                        subtitle: Text(text(record.data, 'date')),
+                        trailing: Text(rupees(amount(record.data, 'amount'))),
+                        onTap: () => Navigator.pop(sheetContext, record),
+                      );
+                    },
+                  ),
                 ),
-              ]
-            : available
-                  .map(
-                    (r) => SimpleDialogOption(
-                      onPressed: () => Navigator.pop(c, r),
-                      child: Text(
-                        '${text(r.data, 'date')} · ${text(r.data, 'description')} · ${rupees(amount(r.data, 'amount'))}',
-                      ),
-                    ),
-                  )
-                  .toList(),
+            ],
+          ),
+        ),
       ),
     );
     if (selected != null) {
@@ -172,20 +341,31 @@ class _FinScreenState extends ConsumerState<FinScreen>
 
   Widget payments(Ledger ledger, List<Occurrence> items) => Column(
     children: [
-      if (items.isEmpty) const Text('No payments to show.'),
+      if (items.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Column(
+            children: [
+              Icon(
+                Icons.event_available_outlined,
+                size: 34,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(height: 8),
+              const Text('Nothing due right now'),
+            ],
+          ),
+        ),
       for (final o in items)
         Container(
+          margin: const EdgeInsets.only(bottom: 10),
           decoration: BoxDecoration(
             color: o.doc.id == widget.occurrenceId
                 ? Theme.of(context).colorScheme.primaryContainer
-                : null,
-            border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context).dividerColor.withValues(alpha: .15),
-              ),
-            ),
+                : Theme.of(context).colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(17),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -199,16 +379,39 @@ class _FinScreenState extends ConsumerState<FinScreen>
                           text(o.doc.data, 'name'),
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
+                        const SizedBox(height: 4),
                         Text(
-                          '${text(o.doc.data, 'date')} · ${o.state}',
+                          text(o.doc.data, 'date'),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
                     ),
                   ),
-                  Text(
-                    rupees(amount(o.doc.data, 'amount')),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        rupees(amount(o.doc.data, 'amount')),
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: o.state == 'overdue'
+                              ? Theme.of(context).colorScheme.errorContainer
+                              : Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Text(
+                          o.state,
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -233,6 +436,8 @@ class _FinScreenState extends ConsumerState<FinScreen>
                         if (await confirm(
                           context,
                           'Skip this payment and release its reserved money?',
+                          title: 'Skip this payment?',
+                          action: 'Skip payment',
                         )) {
                           await ledger.save([
                             o.doc.copy(
@@ -567,6 +772,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: filter,
+                  isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Type'),
                   items: ['all', 'income', 'expense']
                       .map((v) => DropdownMenuItem(value: v, child: Text(v)))
@@ -832,6 +1038,9 @@ class _FinScreenState extends ConsumerState<FinScreen>
                         if (await confirm(
                           context,
                           'Discard these changes and dependent edits, and reload server data?',
+                          title: 'Discard local changes?',
+                          action: 'Discard',
+                          destructive: true,
                         )) {
                           await ledger.resolve(q, false);
                         }
@@ -846,20 +1055,6 @@ class _FinScreenState extends ConsumerState<FinScreen>
             onPressed: () => ledger.sync(),
             child: const Text('Sync now'),
           ),
-          TextButton(
-            onPressed: () => act(() async {
-              if (ledger.queue.isNotEmpty &&
-                  !await confirm(
-                    context,
-                    'Unsynced changes will remain on this device. Sign out?',
-                  )) {
-                return;
-              }
-              await notifications?.logout();
-              await ledger.logout();
-            }),
-            child: const Text('Sign out'),
-          ),
         ]),
       );
       sections.add(
@@ -868,11 +1063,89 @@ class _FinScreenState extends ConsumerState<FinScreen>
         ]),
       );
     }
+    if (widget.screen == 'account') {
+      final user = Map<String, dynamic>.from(
+        ledger.api.session?['user'] as Map? ?? {},
+      );
+      final name = (user['name'] as String?)?.trim();
+      sections.addAll([
+        panel('Profile', [
+          Row(
+            children: [
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: const Color(0xfff5ff76),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(Icons.person_outline_rounded, size: 31),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name?.isNotEmpty == true ? name! : 'FinTrack account',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      user['email'] as String? ?? '',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ]),
+        panel('Your data', [
+          Text(
+            '${ledger.status} · ${ledger.queue.length} pending ${ledger.queue.length == 1 ? 'change' : 'changes'}',
+          ),
+          const SizedBox(height: 12),
+          FilledButton.tonalIcon(
+            onPressed: () => context.go('/settings'),
+            icon: const Icon(Icons.settings_outlined),
+            label: const Text('Settings'),
+          ),
+        ]),
+      ]);
+    }
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'FinTrack',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        leading: widget.screen == 'account'
+            ? IconButton(
+                onPressed: () => context.go('/'),
+                icon: const Icon(Icons.arrow_back_rounded),
+                tooltip: 'Back to home',
+              )
+            : null,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(
+                Icons.account_balance_wallet_rounded,
+                color: Theme.of(context).colorScheme.onPrimary,
+                size: 19,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'FinTrack',
+              style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: -.5),
+            ),
+          ],
         ),
         actions: [
           IconButton(
@@ -880,61 +1153,167 @@ class _FinScreenState extends ConsumerState<FinScreen>
             icon: const Icon(Icons.sync),
             tooltip: 'Sync now',
           ),
+          if (widget.screen != 'account')
+            IconButton(
+              onPressed: () => context.go('/account'),
+              icon: const Icon(Icons.person_outline_rounded),
+              tooltip: 'My account',
+            ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: ledger.sync,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-          children: [
-            Text(
-              titles[index < 0 ? 0 : index],
-              style: Theme.of(
-                context,
-              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Cycle ${totals['period']['start']} → ${totals['period']['end']}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${ledger.status}${ledger.queue.isEmpty ? '' : ' · ${ledger.queue.length} pending'}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 20),
-            ...sections.expand((w) => [w, const SizedBox(height: 16)]),
-          ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: Theme.of(context).brightness == Brightness.light
+              ? const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xffe1f2ed), Color(0xffd4ebd1)],
+                )
+              : null,
+        ),
+        child: RefreshIndicator(
+          onRefresh: ledger.sync,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'YOUR FINANCES',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.5,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.screen == 'account'
+                              ? 'My account'
+                              : titles[index < 0 ? 0 : index],
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -.7,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (widget.screen != 'account')
+                    FilledButton.tonalIcon(
+                      onPressed: () => editRecord(
+                        context,
+                        ledger,
+                        widget.screen == 'plans' ? 'plan' : 'transaction',
+                      ),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Add'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _headerChip(
+                    Icons.calendar_month_outlined,
+                    '${totals['period']['start']} – ${totals['period']['end']}',
+                  ),
+                  _headerChip(
+                    ledger.status == 'Synced'
+                        ? Icons.cloud_done_outlined
+                        : Icons.sync_problem_outlined,
+                    '${ledger.status}${ledger.queue.isEmpty ? '' : ' · ${ledger.queue.length} pending'}',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              ...sections.expand((w) => [w, const SizedBox(height: 16)]),
+            ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => editRecord(
-          context,
-          ledger,
-          widget.screen == 'plans' ? 'plan' : 'transaction',
-        ),
-        icon: const Icon(Icons.add),
-        label: Text(widget.screen == 'plans' ? 'Add plan' : 'Add transaction'),
+      bottomNavigationBar: widget.screen == 'account'
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+                child: OutlinedButton.icon(
+                  onPressed: () => act(() async {
+                    if (ledger.queue.isNotEmpty &&
+                        !await confirm(
+                          context,
+                          'Unsynced changes will remain on this device. Sign out?',
+                          title: 'Sign out?',
+                          action: 'Sign out',
+                        )) {
+                      return;
+                    }
+                    await notifications?.logout();
+                    await ledger.logout();
+                  }),
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('Sign out'),
+                ),
+              ),
+            )
+          : NavigationBar(
+              selectedIndex: index < 0 ? 0 : index,
+              onDestinationSelected: (i) => context.go(routes[i]),
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home_rounded),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.event_note_outlined),
+                  selectedIcon: Icon(Icons.event_note_rounded),
+                  label: 'Plans',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.swap_horiz),
+                  selectedIcon: Icon(Icons.swap_horiz_rounded),
+                  label: 'Activity',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.bar_chart_outlined),
+                  selectedIcon: Icon(Icons.bar_chart_rounded),
+                  label: 'Reports',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.settings_outlined),
+                  selectedIcon: Icon(Icons.settings_rounded),
+                  label: 'Settings',
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _headerChip(IconData icon, String label) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: .4)),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index < 0 ? 0 : index,
-        onDestinationSelected: (i) => context.go(routes[i]),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(
-            icon: Icon(Icons.event_note_outlined),
-            label: 'Plans',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.swap_horiz),
-            label: 'Transactions',
-          ),
-          NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Reports'),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            label: 'Settings',
-          ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: colors.primary),
+          const SizedBox(width: 5),
+          Text(label, style: Theme.of(context).textTheme.labelSmall),
         ],
       ),
     );
@@ -970,121 +1349,147 @@ class _LoginScreenState extends State<LoginScreen> {
         padding: const EdgeInsets.all(24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
-          child: Form(
-            key: form,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Icon(
-                  Icons.account_balance_wallet_outlined,
-                  size: 58,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'FinTrack',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Plan your bills. Know what you can spend.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                if (register) ...[
-                  TextFormField(
-                    controller: name,
-                    decoration: const InputDecoration(labelText: 'Name'),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: .4),
+              ),
+            ),
+            child: Form(
+              key: form,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xfff5ff76), Color(0xffdff2a7)],
+                        ),
+                        borderRadius: BorderRadius.circular(21),
+                      ),
+                      child: const Icon(
+                        Icons.account_balance_wallet_rounded,
+                        size: 34,
+                        color: Color(0xff171b19),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
-                ],
-                TextFormField(
-                  controller: email,
-                  keyboardType: TextInputType.emailAddress,
-                  autofillHints: const [AutofillHints.email],
-                  decoration: const InputDecoration(labelText: 'Email'),
-                  validator: (v) =>
-                      v == null || !v.contains('@') ? 'Enter your email' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: password,
-                  obscureText: obscure,
-                  autofillHints: const [AutofillHints.password],
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    suffixIcon: IconButton(
-                      onPressed: () => setState(() => obscure = !obscure),
-                      icon: Icon(
-                        obscure
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                      ),
+                  Text(
+                    'FinTrack',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  validator: (v) =>
-                      (v?.length ?? 0) < 8 ? 'Use at least 8 characters' : null,
-                ),
-                const SizedBox(height: 20),
-                if (error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Plan your bills. Know what you can spend.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  if (register) ...[
+                    TextFormField(
+                      controller: name,
+                      decoration: const InputDecoration(labelText: 'Name'),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  TextFormField(
+                    controller: email,
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHints: const [AutofillHints.email],
+                    decoration: const InputDecoration(labelText: 'Email'),
+                    validator: (v) => v == null || !v.contains('@')
+                        ? 'Enter your email'
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: password,
+                    obscureText: obscure,
+                    autofillHints: const [AutofillHints.password],
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      suffixIcon: IconButton(
+                        onPressed: () => setState(() => obscure = !obscure),
+                        icon: Icon(
+                          obscure
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                      ),
+                    ),
+                    validator: (v) => (v?.length ?? 0) < 8
+                        ? 'Use at least 8 characters'
+                        : null,
+                  ),
+                  const SizedBox(height: 20),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  FilledButton(
+                    onPressed: busy
+                        ? null
+                        : () async {
+                            if (!form.currentState!.validate()) return;
+                            setState(() {
+                              busy = true;
+                              error = null;
+                            });
+                            try {
+                              await widget.ledger.login(
+                                email.text.trim(),
+                                password.text,
+                                register: register,
+                                name: name.text.trim(),
+                              );
+                            } catch (e) {
+                              if (mounted) setState(() => error = e.toString());
+                            } finally {
+                              if (mounted) setState(() => busy = false);
+                            }
+                          },
                     child: Text(
-                      error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
+                      busy
+                          ? 'Connecting…'
+                          : register
+                          ? 'Create account'
+                          : 'Sign in',
                     ),
                   ),
-                FilledButton(
-                  onPressed: busy
-                      ? null
-                      : () async {
-                          if (!form.currentState!.validate()) return;
-                          setState(() {
-                            busy = true;
-                            error = null;
-                          });
-                          try {
-                            await widget.ledger.login(
-                              email.text.trim(),
-                              password.text,
-                              register: register,
-                              name: name.text.trim(),
-                            );
-                          } catch (e) {
-                            if (mounted) setState(() => error = e.toString());
-                          } finally {
-                            if (mounted) setState(() => busy = false);
-                          }
-                        },
-                  child: Text(
-                    busy
-                        ? 'Connecting…'
-                        : register
-                        ? 'Create account'
-                        : 'Sign in',
+                  TextButton(
+                    onPressed: busy
+                        ? null
+                        : () => setState(() => register = !register),
+                    child: Text(
+                      register
+                          ? 'Already have an account? Sign in'
+                          : 'Create an account',
+                    ),
                   ),
-                ),
-                TextButton(
-                  onPressed: busy
-                      ? null
-                      : () => setState(() => register = !register),
-                  child: Text(
-                    register
-                        ? 'Already have an account? Sign in'
-                        : 'Create an account',
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Sign in once online. Your saved ledger remains available offline.',
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Sign in once online. Your saved ledger remains available offline.',
-                  textAlign: TextAlign.center,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

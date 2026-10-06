@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Plan income, bills, budgets, and spending with FinTrack',
     start_url: '/',
     display: 'standalone',
-    background_color: '#09090b',
-    theme_color: '#09090b',
+    background_color: '#dcefe7',
+    theme_color: '#dcefe7',
     orientation: 'portrait',
     icons: [
       {
