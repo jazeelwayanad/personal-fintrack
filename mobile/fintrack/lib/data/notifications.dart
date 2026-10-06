@@ -20,7 +20,7 @@ class PushNotifications {
     }
     await local.initialize(
       settings: const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        android: AndroidInitializationSettings('fintrack_notification'),
       ),
       onDidReceiveNotificationResponse: (r) => navigate(r.payload ?? '/plans'),
     );
