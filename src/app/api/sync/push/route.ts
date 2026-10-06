@@ -1,131 +1,20 @@
-import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { auth } from "@/auth"
-
-interface UnsyncedTransaction {
-  syncId: string
-  type: string
-  amount: number
-  categoryId: string
-  paymentMethodId: string
-  date: string
-  description?: string
-  createdAt: number
-  updatedAt: number
-  deletedAt?: number
-}
-
-interface UnsyncedCategory {
-  syncId: string
-  type: string
-  name: string
-  icon?: string
-  color: string
-  createdAt: number
-  updatedAt: number
-  deletedAt?: number
-}
-
-interface UnsyncedPaymentMethod {
-  syncId: string
-  name: string
-  icon?: string
-  createdAt: number
-  updatedAt: number
-  deletedAt?: number
-}
-
-// POST /api/sync/push
-// Body: { transactions: [...], categories: [...], paymentMethods: [...] }
-export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  const userId = session.user.id
-  const { transactions = [], categories = [], paymentMethods = [] } = await req.json()
-
-  // Upsert all records in a transaction
-  await prisma.$transaction(async (tx: any) => {
-    // Transactions
-    for (const t of (transactions as UnsyncedTransaction[])) {
-      await tx.transaction.upsert({
-        where: { id: t.syncId },
-        update: {
-          type: t.type,
-          amount: t.amount,
-          categoryId: t.categoryId,
-          paymentMethodId: t.paymentMethodId,
-          date: t.date,
-          description: t.description ?? null,
-          updatedAt: new Date(t.updatedAt),
-          deletedAt: t.deletedAt ? new Date(t.deletedAt) : null,
-        },
-        create: {
-          id: t.syncId,
-          userId,
-          type: t.type,
-          amount: t.amount,
-          categoryId: t.categoryId,
-          paymentMethodId: t.paymentMethodId,
-          date: t.date,
-          description: t.description ?? null,
-          createdAt: new Date(t.createdAt),
-          updatedAt: new Date(t.updatedAt),
-          deletedAt: t.deletedAt ? new Date(t.deletedAt) : null,
-        },
-      })
-    }
-
-    // Categories
-    for (const c of (categories as UnsyncedCategory[])) {
-      await tx.category.upsert({
-        where: { id: c.syncId },
-        update: {
-          type: c.type,
-          name: c.name,
-          icon: c.icon ?? "",
-          color: c.color,
-          updatedAt: new Date(c.updatedAt),
-          deletedAt: c.deletedAt ? new Date(c.deletedAt) : null,
-        },
-        create: {
-          id: c.syncId,
-          userId,
-          type: c.type,
-          name: c.name,
-          icon: c.icon ?? "",
-          color: c.color,
-          createdAt: new Date(c.createdAt),
-          updatedAt: new Date(c.updatedAt),
-          deletedAt: c.deletedAt ? new Date(c.deletedAt) : null,
-        },
-      })
-    }
-
-    // Payment Methods
-    for (const pm of (paymentMethods as UnsyncedPaymentMethod[])) {
-      await tx.paymentMethod.upsert({
-        where: { id: pm.syncId },
-        update: {
-          name: pm.name,
-          icon: pm.icon ?? "",
-          updatedAt: new Date(pm.updatedAt),
-          deletedAt: pm.deletedAt ? new Date(pm.deletedAt) : null,
-        },
-        create: {
-          id: pm.syncId,
-          userId,
-          name: pm.name,
-          icon: pm.icon ?? "",
-          createdAt: new Date(pm.createdAt),
-          updatedAt: new Date(pm.updatedAt),
-          deletedAt: pm.deletedAt ? new Date(pm.deletedAt) : null,
-        },
-      })
-    }
-  })
-
-  return NextResponse.json({ success: true })
-}
+import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
+import { api, body } from '@/lib/server/http';
+import { requireUser } from '@/lib/server/mobile-auth';
+import { pull, push, ApiError } from '@/lib/server/sync';
+import { Change } from '@/lib/finance/model';
+const item = z.object({ syncId: z.string(), deletedAt: z.number().nullable().optional() }).passthrough();
+const schema = z.object({ transactions: z.array(item).default([]), categories: z.array(item).default([]), paymentMethods: z.array(item).default([]) });
+export async function POST(req: Request) { return api(async () => {
+  const userId = await requireUser(req), input = schema.parse(await body(req));
+  const current = await pull(userId, 0), byId = new Map(current.records.map(r => [r.id, r]));
+  const changes: Change[] = [];
+  for (const c of input.categories) changes.push({ id: c.syncId, kind: 'category', baseRevision: byId.get(c.syncId)?.revision ?? 0, deleted: !!c.deletedAt, data: { name: c.name, type: c.type, color: c.color, icon: c.icon ?? '' } });
+  for (const p of input.paymentMethods) changes.push({ id: p.syncId, kind: 'paymentMethod', baseRevision: byId.get(p.syncId)?.revision ?? 0, deleted: !!p.deletedAt, data: { name: p.name, icon: p.icon ?? '' } });
+  for (const t of input.transactions) changes.push({ id: t.syncId, kind: 'transaction', baseRevision: byId.get(t.syncId)?.revision ?? 0, deleted: !!t.deletedAt, data: { ...byId.get(t.syncId)?.data, type: t.type, amount: Math.round(Number(t.amount) * 100), categoryId: t.categoryId, paymentMethodId: t.paymentMethodId, date: t.date, description: t.description ?? '' } });
+  if (!changes.length) return { success: true };
+  const result = await push(userId, { id: randomUUID(), changes });
+  if (!result.accepted) throw new ApiError(409, 'Please sync and retry.');
+  return { success: true };
+}); }

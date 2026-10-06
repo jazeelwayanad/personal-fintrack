@@ -1,0 +1,7 @@
+mobile/
+tests/
+fixtures/
+scratch/
+.next/
+node_modules/
+tsconfig.tsbuildinfo

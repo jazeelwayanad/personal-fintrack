@@ -15,6 +15,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  syncRevision Int @default(0)
+  syncImported Boolean @default(false)
+  records FinancialRecord[]
+  mutations SyncMutation[]
+  sessions MobileSession[]
+  devices NotificationDevice[]
+  deliveries NotificationDelivery[]
   transactions   Transaction[]
   categories     Category[]
   paymentMethods PaymentMethod[]
@@ -64,4 +71,69 @@ model PaymentMethod {
   deletedAt DateTime?
 
   @@index([userId])
+}
+
+// All financial document kinds are validated by the shared runtime schemas.
+model FinancialRecord {
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id String
+  kind String
+  data Json
+  revision Int
+  deleted Boolean @default(false)
+  occurrenceKey String?
+  updatedAt DateTime @updatedAt
+  @@id([userId, id])
+  @@unique([userId, occurrenceKey])
+  @@index([userId, revision])
+}
+
+model SyncMutation {
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id String
+  result Json
+  createdAt DateTime @default(now())
+  @@id([userId, id])
+}
+
+model MobileSession {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshHash String @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+model NotificationDevice {
+  id String @id
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform String
+  token String? @unique
+  subscription Json?
+  updatedAt DateTime @updatedAt
+  @@index([userId])
+}
+
+model NotificationDelivery {
+  id String @id
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId String
+  date String
+  status String
+  attempts Int @default(0)
+  lastError String?
+  updatedAt DateTime @updatedAt
+  @@unique([deviceId, date])
+}
+
+model AuthAttempt {
+  key String @id
+  count Int
+  expiresAt DateTime
 }

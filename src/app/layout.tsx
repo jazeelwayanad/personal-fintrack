@@ -21,8 +21,8 @@ export const metadata: Metadata = {
     title: "FinTrack",
   },
   icons: {
-    icon: "/favicon.png",
-    apple: "/icons/icon-192.png",
+    icon: "/favicon.jpg",
+    apple: "/icons/icon-192.jpg",
   },
 };
 

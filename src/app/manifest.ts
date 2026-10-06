@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'FinTrack',
     short_name: 'FinTrack',
-    description: 'Offline-first Progressive Web App for expense tracking',
+    description: 'Plan income, bills, budgets, and spending with FinTrack',
     start_url: '/',
     display: 'standalone',
     background_color: '#09090b',
@@ -12,16 +12,16 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait',
     icons: [
       {
-        src: '/web-app-manifest-192x192.png',
+        src: '/icons/icon-192.jpg',
         sizes: '192x192',
-        type: 'image/png',
-        purpose: 'maskable'
+        type: 'image/jpeg',
+        purpose: 'any'
       },
       {
-        src: '/web-app-manifest-512x512.png',
+        src: '/icons/icon-512.jpg',
         sizes: '512x512',
-        type: 'image/png',
-        purpose: 'maskable'
+        type: 'image/jpeg',
+        purpose: 'any'
       },
     ],
   }

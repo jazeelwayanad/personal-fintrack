@@ -1,0 +1,948 @@
+[
+  {
+    "name": "reserves bills savings and other categories",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "preferences",
+        "kind": "preferences",
+        "data": {
+          "payday": 1,
+          "savings": 500000,
+          "limitMode": "warn",
+          "notifications": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "salary",
+        "kind": "transaction",
+        "data": {
+          "type": "income",
+          "amount": 3000000,
+          "categoryId": "salary",
+          "paymentMethodId": "cash",
+          "date": "2026-10-01",
+          "description": ""
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "emi",
+        "kind": "plan",
+        "data": {
+          "name": "Loan",
+          "type": "expense",
+          "planType": "emi",
+          "amount": 1200000,
+          "categoryId": "bills",
+          "startDate": "2026-10-10",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:food",
+        "kind": "budget",
+        "data": {
+          "categoryId": "food",
+          "amount": 600000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:transport",
+        "kind": "budget",
+        "data": {
+          "categoryId": "transport",
+          "amount": 200000
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "balance": 3000000,
+      "commitments": 1200000,
+      "unallocated": 500000,
+      "reservedBudgets": 800000
+    },
+    "check": {
+      "amount": 600000,
+      "categoryId": "food",
+      "maximum": 600000,
+      "allowed": true,
+      "shortfall": 0
+    }
+  },
+  {
+    "name": "a category expense consumes its reserve once",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "preferences",
+        "kind": "preferences",
+        "data": {
+          "payday": 1,
+          "savings": 500000,
+          "limitMode": "warn",
+          "notifications": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "salary",
+        "kind": "transaction",
+        "data": {
+          "type": "income",
+          "amount": 3000000,
+          "categoryId": "salary",
+          "paymentMethodId": "cash",
+          "date": "2026-10-01",
+          "description": ""
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "emi",
+        "kind": "plan",
+        "data": {
+          "name": "Loan",
+          "type": "expense",
+          "planType": "emi",
+          "amount": 1200000,
+          "categoryId": "bills",
+          "startDate": "2026-10-10",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:food",
+        "kind": "budget",
+        "data": {
+          "categoryId": "food",
+          "amount": 600000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:transport",
+        "kind": "budget",
+        "data": {
+          "categoryId": "transport",
+          "amount": 200000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "lunch",
+        "kind": "transaction",
+        "data": {
+          "type": "expense",
+          "amount": 100000,
+          "categoryId": "food",
+          "paymentMethodId": "cash",
+          "date": "2026-10-01",
+          "description": ""
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "balance": 2900000,
+      "unallocated": 500000,
+      "reservedBudgets": 700000
+    },
+    "check": {
+      "amount": 500001,
+      "categoryId": "food",
+      "maximum": 500000,
+      "allowed": false,
+      "shortfall": 1
+    }
+  },
+  {
+    "name": "paying a bill releases its reservation",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "preferences",
+        "kind": "preferences",
+        "data": {
+          "payday": 1,
+          "savings": 500000,
+          "limitMode": "warn",
+          "notifications": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "salary",
+        "kind": "transaction",
+        "data": {
+          "type": "income",
+          "amount": 3000000,
+          "categoryId": "salary",
+          "paymentMethodId": "cash",
+          "date": "2026-10-01",
+          "description": ""
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "emi",
+        "kind": "plan",
+        "data": {
+          "name": "Loan",
+          "type": "expense",
+          "planType": "emi",
+          "amount": 1200000,
+          "categoryId": "bills",
+          "startDate": "2026-10-10",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:food",
+        "kind": "budget",
+        "data": {
+          "categoryId": "food",
+          "amount": 600000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:transport",
+        "kind": "budget",
+        "data": {
+          "categoryId": "transport",
+          "amount": 200000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "emi:2026-10-10",
+        "kind": "occurrence",
+        "data": {
+          "planId": "emi",
+          "name": "Loan",
+          "type": "expense",
+          "amount": 1200000,
+          "categoryId": "bills",
+          "date": "2026-10-10",
+          "reminders": true,
+          "status": "pending"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "payment:emi:2026-10-10",
+        "kind": "transaction",
+        "data": {
+          "type": "expense",
+          "amount": 1200000,
+          "categoryId": "bills",
+          "paymentMethodId": "cash",
+          "date": "2026-10-01",
+          "description": "",
+          "occurrenceId": "emi:2026-10-10"
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "balance": 1800000,
+      "commitments": 0,
+      "unallocated": 500000,
+      "reservedBudgets": 800000
+    }
+  },
+  {
+    "name": "expected and future dated income is excluded",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "preferences",
+        "kind": "preferences",
+        "data": {
+          "payday": 1,
+          "savings": 500000,
+          "limitMode": "warn",
+          "notifications": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "salary",
+        "kind": "transaction",
+        "data": {
+          "type": "income",
+          "amount": 3000000,
+          "categoryId": "salary",
+          "paymentMethodId": "cash",
+          "date": "2026-10-01",
+          "description": ""
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "emi",
+        "kind": "plan",
+        "data": {
+          "name": "Loan",
+          "type": "expense",
+          "planType": "emi",
+          "amount": 1200000,
+          "categoryId": "bills",
+          "startDate": "2026-10-10",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:food",
+        "kind": "budget",
+        "data": {
+          "categoryId": "food",
+          "amount": 600000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:transport",
+        "kind": "budget",
+        "data": {
+          "categoryId": "transport",
+          "amount": 200000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "future-salary",
+        "kind": "plan",
+        "data": {
+          "name": "Salary",
+          "type": "income",
+          "planType": "salary",
+          "amount": 5000000,
+          "categoryId": "salary",
+          "startDate": "2026-11-01",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "future",
+        "kind": "transaction",
+        "data": {
+          "type": "income",
+          "amount": 5000000,
+          "categoryId": "salary",
+          "paymentMethodId": "cash",
+          "date": "2026-11-01",
+          "description": ""
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "balance": 3000000,
+      "income": 3000000,
+      "unallocated": 500000
+    }
+  },
+  {
+    "name": "cash shortage overrides category allowance",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "opening",
+        "kind": "adjustment",
+        "data": {
+          "date": "2026-10-01",
+          "amount": 100000,
+          "description": "Opening"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:food",
+        "kind": "budget",
+        "data": {
+          "categoryId": "food",
+          "amount": 150000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:transport",
+        "kind": "budget",
+        "data": {
+          "categoryId": "transport",
+          "amount": 50000
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "balance": 100000,
+      "unallocated": -100000,
+      "income": 0
+    },
+    "check": {
+      "amount": 50001,
+      "categoryId": "food",
+      "maximum": 50000,
+      "allowed": false,
+      "shortfall": 1
+    }
+  },
+  {
+    "name": "unbudgeted expense uses unallocated money",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "preferences",
+        "kind": "preferences",
+        "data": {
+          "payday": 1,
+          "savings": 500000,
+          "limitMode": "warn",
+          "notifications": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "salary",
+        "kind": "transaction",
+        "data": {
+          "type": "income",
+          "amount": 3000000,
+          "categoryId": "salary",
+          "paymentMethodId": "cash",
+          "date": "2026-10-01",
+          "description": ""
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "emi",
+        "kind": "plan",
+        "data": {
+          "name": "Loan",
+          "type": "expense",
+          "planType": "emi",
+          "amount": 1200000,
+          "categoryId": "bills",
+          "startDate": "2026-10-10",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:food",
+        "kind": "budget",
+        "data": {
+          "categoryId": "food",
+          "amount": 600000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:transport",
+        "kind": "budget",
+        "data": {
+          "categoryId": "transport",
+          "amount": 200000
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "unallocated": 500000
+    },
+    "check": {
+      "amount": 500001,
+      "categoryId": "shopping",
+      "maximum": 500000,
+      "allowed": false,
+      "shortfall": 1
+    }
+  },
+  {
+    "name": "overdue payments remain reserved",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "salary",
+        "kind": "transaction",
+        "data": {
+          "type": "income",
+          "amount": 1000000,
+          "categoryId": "salary",
+          "paymentMethodId": "cash",
+          "date": "2026-10-01",
+          "description": ""
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "emi",
+        "kind": "plan",
+        "data": {
+          "name": "Loan",
+          "type": "expense",
+          "planType": "emi",
+          "amount": 100000,
+          "categoryId": "bills",
+          "startDate": "2026-09-10",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "commitments": 200000,
+      "unallocated": 800000
+    }
+  },
+  {
+    "name": "pausing keeps old overdue bills",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "emi",
+        "kind": "plan",
+        "data": {
+          "name": "Loan",
+          "type": "expense",
+          "planType": "emi",
+          "amount": 100000,
+          "categoryId": "bills",
+          "startDate": "2026-09-10",
+          "recurrence": "monthly",
+          "reminders": true,
+          "pausedAt": "2026-10-05"
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "commitments": 100000,
+      "unallocated": -100000
+    }
+  },
+  {
+    "name": "skipping releases a commitment",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "preferences",
+        "kind": "preferences",
+        "data": {
+          "payday": 1,
+          "savings": 500000,
+          "limitMode": "warn",
+          "notifications": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "salary",
+        "kind": "transaction",
+        "data": {
+          "type": "income",
+          "amount": 3000000,
+          "categoryId": "salary",
+          "paymentMethodId": "cash",
+          "date": "2026-10-01",
+          "description": ""
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "emi",
+        "kind": "plan",
+        "data": {
+          "name": "Loan",
+          "type": "expense",
+          "planType": "emi",
+          "amount": 1200000,
+          "categoryId": "bills",
+          "startDate": "2026-10-10",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:food",
+        "kind": "budget",
+        "data": {
+          "categoryId": "food",
+          "amount": 600000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:transport",
+        "kind": "budget",
+        "data": {
+          "categoryId": "transport",
+          "amount": 200000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "emi:2026-10-10",
+        "kind": "occurrence",
+        "data": {
+          "planId": "emi",
+          "name": "Loan",
+          "type": "expense",
+          "amount": 1200000,
+          "categoryId": "bills",
+          "date": "2026-10-10",
+          "reminders": true,
+          "status": "skipped"
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "commitments": 0,
+      "unallocated": 1700000
+    }
+  },
+  {
+    "name": "deleting a payment restores its commitment",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "preferences",
+        "kind": "preferences",
+        "data": {
+          "payday": 1,
+          "savings": 500000,
+          "limitMode": "warn",
+          "notifications": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "salary",
+        "kind": "transaction",
+        "data": {
+          "type": "income",
+          "amount": 3000000,
+          "categoryId": "salary",
+          "paymentMethodId": "cash",
+          "date": "2026-10-01",
+          "description": ""
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "emi",
+        "kind": "plan",
+        "data": {
+          "name": "Loan",
+          "type": "expense",
+          "planType": "emi",
+          "amount": 1200000,
+          "categoryId": "bills",
+          "startDate": "2026-10-10",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:food",
+        "kind": "budget",
+        "data": {
+          "categoryId": "food",
+          "amount": 600000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:transport",
+        "kind": "budget",
+        "data": {
+          "categoryId": "transport",
+          "amount": 200000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "emi:2026-10-10",
+        "kind": "occurrence",
+        "data": {
+          "planId": "emi",
+          "name": "Loan",
+          "type": "expense",
+          "amount": 1200000,
+          "categoryId": "bills",
+          "date": "2026-10-10",
+          "reminders": true,
+          "status": "pending"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "payment:emi:2026-10-10",
+        "kind": "transaction",
+        "data": {
+          "type": "expense",
+          "amount": 1200000,
+          "categoryId": "bills",
+          "paymentMethodId": "cash",
+          "date": "2026-10-01",
+          "description": "",
+          "occurrenceId": "emi:2026-10-10"
+        },
+        "revision": 0,
+        "deleted": true
+      }
+    ],
+    "expected": {
+      "balance": 3000000,
+      "commitments": 1200000,
+      "unallocated": 500000
+    }
+  },
+  {
+    "name": "budget resets at scheduled payday",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "preferences",
+        "kind": "preferences",
+        "data": {
+          "payday": 1,
+          "savings": 500000,
+          "limitMode": "warn",
+          "notifications": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "salary",
+        "kind": "transaction",
+        "data": {
+          "type": "income",
+          "amount": 3000000,
+          "categoryId": "salary",
+          "paymentMethodId": "cash",
+          "date": "2026-10-01",
+          "description": ""
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "emi",
+        "kind": "plan",
+        "data": {
+          "name": "Loan",
+          "type": "expense",
+          "planType": "emi",
+          "amount": 1200000,
+          "categoryId": "bills",
+          "startDate": "2026-10-10",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:food",
+        "kind": "budget",
+        "data": {
+          "categoryId": "food",
+          "amount": 600000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:transport",
+        "kind": "budget",
+        "data": {
+          "categoryId": "transport",
+          "amount": 200000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "prior",
+        "kind": "transaction",
+        "data": {
+          "type": "expense",
+          "amount": 100000,
+          "categoryId": "food",
+          "paymentMethodId": "cash",
+          "date": "2026-09-30",
+          "description": ""
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "reservedBudgets": 800000,
+      "expenses": 0,
+      "balance": 2900000
+    }
+  },
+  {
+    "name": "a negative protected balance never permits spending",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "preferences",
+        "kind": "preferences",
+        "data": {
+          "payday": 1,
+          "savings": 100000,
+          "limitMode": "block",
+          "notifications": true
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "unallocated": -100000
+    },
+    "check": {
+      "amount": 1,
+      "categoryId": "food",
+      "maximum": 0,
+      "allowed": false,
+      "shortfall": 1
+    }
+  },
+  {
+    "name": "monthly recurrence clamps without drifting",
+    "today": "2028-02-10",
+    "records": [
+      {
+        "id": "emi",
+        "kind": "plan",
+        "data": {
+          "name": "Loan",
+          "type": "expense",
+          "planType": "emi",
+          "amount": 100,
+          "categoryId": "bills",
+          "startDate": "2028-01-31",
+          "recurrence": "monthly",
+          "reminders": true,
+          "endDate": "2028-03-31"
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {},
+    "through": "2028-04-30",
+    "dates": [
+      "2028-01-31",
+      "2028-02-29",
+      "2028-03-31"
+    ]
+  },
+  {
+    "name": "yearly leap-day recurrence returns to leap day",
+    "today": "2028-02-10",
+    "records": [
+      {
+        "id": "emi",
+        "kind": "plan",
+        "data": {
+          "name": "Loan",
+          "type": "expense",
+          "planType": "emi",
+          "amount": 100,
+          "categoryId": "bills",
+          "startDate": "2028-02-29",
+          "recurrence": "yearly",
+          "reminders": true,
+          "endDate": "2032-03-01"
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {},
+    "through": "2032-03-01",
+    "dates": [
+      "2028-02-29",
+      "2029-02-28",
+      "2030-02-28",
+      "2031-02-28",
+      "2032-02-29"
+    ]
+  }
+]

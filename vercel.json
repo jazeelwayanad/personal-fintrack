@@ -1,0 +1,5 @@
+{
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm build",
+  "crons": [{ "path": "/api/cron/reminders", "schedule": "0 3 * * *" }]
+}

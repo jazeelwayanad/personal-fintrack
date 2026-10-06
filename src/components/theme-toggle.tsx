@@ -6,9 +6,8 @@ import { useTheme } from "next-themes"
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = React.useState(false)
+  const mounted = React.useSyncExternalStore(() => () => {}, () => true, () => false)
 
-  React.useEffect(() => setMounted(true), [])
 
   if (!mounted) {
     return (

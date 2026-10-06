@@ -1,94 +1,14 @@
-import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { auth } from "@/auth"
-
-interface SyncTransaction {
-  id: string
-  type: string
-  amount: number
-  categoryId: string
-  paymentMethodId: string
-  date: string
-  description: string | null
-  createdAt: Date
-  updatedAt: Date
-  deletedAt: Date | null
-}
-
-interface SyncCategory {
-  id: string
-  type: string
-  name: string
-  icon: string
-  color: string
-  createdAt: Date
-  updatedAt: Date
-  deletedAt: Date | null
-}
-
-interface SyncPaymentMethod {
-  id: string
-  name: string
-  icon: string
-  createdAt: Date
-  updatedAt: Date
-  deletedAt: Date | null
-}
-
-// GET /api/sync/pull?since=<timestamp_ms>
-export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  const userId = session.user.id
-  const sinceParam = req.nextUrl.searchParams.get("since")
-  const since = sinceParam ? new Date(parseInt(sinceParam)) : new Date(0)
-
-  const [transactions, categories, paymentMethods] = await Promise.all([
-    prisma.transaction.findMany({
-      where: { userId, updatedAt: { gt: since } },
-    }) as Promise<SyncTransaction[]>,
-    prisma.category.findMany({
-      where: { userId, updatedAt: { gt: since } },
-    }) as Promise<SyncCategory[]>,
-    prisma.paymentMethod.findMany({
-      where: { userId, updatedAt: { gt: since } },
-    }) as Promise<SyncPaymentMethod[]>,
-  ])
-
-  return NextResponse.json({
-    transactions: transactions.map((t) => ({
-      syncId: t.id,
-      type: t.type,
-      amount: t.amount,
-      categoryId: t.categoryId,
-      paymentMethodId: t.paymentMethodId,
-      date: t.date,
-      description: t.description,
-      createdAt: t.createdAt.getTime(),
-      updatedAt: t.updatedAt.getTime(),
-      deletedAt: t.deletedAt?.getTime() ?? null,
-    })),
-    categories: categories.map((c) => ({
-      syncId: c.id,
-      type: c.type,
-      name: c.name,
-      icon: c.icon,
-      color: c.color,
-      createdAt: c.createdAt.getTime(),
-      updatedAt: c.updatedAt.getTime(),
-      deletedAt: c.deletedAt?.getTime() ?? null,
-    })),
-    paymentMethods: paymentMethods.map((pm) => ({
-      syncId: pm.id,
-      name: pm.name,
-      icon: pm.icon,
-      createdAt: pm.createdAt.getTime(),
-      updatedAt: pm.updatedAt.getTime(),
-      deletedAt: pm.deletedAt?.getTime() ?? null,
-    })),
-    serverTime: Date.now(),
-  })
-}
+import { prisma } from '@/lib/prisma';
+import { api } from '@/lib/server/http';
+import { requireUser } from '@/lib/server/mobile-auth';
+import { ApiError, ensureImported } from '@/lib/server/sync';
+export async function GET(req: Request) { return api(async () => {
+  const userId = await requireUser(req); await ensureImported(userId);
+  const value = Number(new URL(req.url).searchParams.get('since') ?? 0);
+  if (!Number.isFinite(value) || value < 0) throw new ApiError(400, 'Invalid cursor.');
+  const since = new Date(value), serverTime = Date.now();
+  const where = { userId, updatedAt: { gt: since, lte: new Date(serverTime) } };
+  const [transactions, categories, paymentMethods] = await Promise.all([prisma.transaction.findMany({ where }), prisma.category.findMany({ where }), prisma.paymentMethod.findMany({ where })]);
+  const mapped = (r: { id: string; createdAt: Date; updatedAt: Date; deletedAt: Date | null }) => ({ ...r, syncId: r.id, createdAt: r.createdAt.getTime(), updatedAt: r.updatedAt.getTime(), deletedAt: r.deletedAt?.getTime() ?? null });
+  return { transactions: transactions.map(mapped), categories: categories.map(mapped), paymentMethods: paymentMethods.map(mapped), serverTime };
+}); }
