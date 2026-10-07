@@ -15,6 +15,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  feedback Feedback[]
   profile UserProfile?
   syncRevision Int @default(0)
   syncImported Boolean @default(false)
@@ -149,4 +150,17 @@ model UserProfile {
   photoPublicId String?
   photoFormat String?
   updatedAt DateTime @updatedAt
+}
+
+// Feedback is separate from the financial ledger and never syncs to other users.
+model Feedback {
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id String
+  topic String
+  message String
+  appVersion String
+  createdAt DateTime @default(now())
+  @@id([userId, id])
+  @@index([createdAt])
 }

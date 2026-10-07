@@ -27,7 +27,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
         'fintrack/external_links',
       ).invokeMethod('open', url);
     } on PlatformException {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -35,7 +35,138 @@ class _FinScreenState extends ConsumerState<FinScreen>
             ),
           ),
         );
+      }
     }
+  }
+
+  Future<void> giveFeedback(Ledger ledger) async {
+    final message = TextEditingController();
+    final form = GlobalKey<FormState>();
+    final id = const Uuid().v4();
+    var topic = 'suggestion', error = '';
+    var busy = false, sent = false;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, update) => PopScope(
+          canPop: !busy,
+          child: AlertDialog(
+            title: const Text('Give feedback'),
+            content: SingleChildScrollView(
+              child: sent
+                  ? const Text('Thank you. Your feedback has been received.')
+                  : Form(
+                      key: form,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Share an idea or report an issue with Eucodes. Your ledger is not attached.',
+                          ),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<String>(
+                            initialValue: topic,
+                            decoration: const InputDecoration(
+                              labelText: 'Topic',
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'suggestion',
+                                child: Text('Suggestion'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'issue',
+                                child: Text('Report an issue'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'other',
+                                child: Text('Other'),
+                              ),
+                            ],
+                            onChanged: busy
+                                ? null
+                                : (value) => update(() => topic = value!),
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: message,
+                            enabled: !busy,
+                            minLines: 4,
+                            maxLines: 6,
+                            maxLength: 3000,
+                            decoration: const InputDecoration(
+                              labelText: 'Your feedback',
+                              hintText: 'What could we improve?',
+                            ),
+                            validator: (value) =>
+                                (value ?? '').trim().length < 10
+                                ? 'Please write at least 10 characters.'
+                                : null,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Avoid passwords and sensitive financial details. Feedback is saved with your account and app version for developer review.',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          if (error.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Text(
+                                error,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: busy ? null : () => Navigator.pop(dialogContext),
+                child: Text(sent ? 'Done' : 'Cancel'),
+              ),
+              if (!sent)
+                FilledButton(
+                  onPressed: busy
+                      ? null
+                      : () async {
+                          if (!form.currentState!.validate()) return;
+                          update(() {
+                            busy = true;
+                            error = '';
+                          });
+                          try {
+                            await ledger.api.request(
+                              '/api/v1/feedback',
+                              method: 'POST',
+                              body: {
+                                'id': id,
+                                'topic': topic,
+                                'message': message.text,
+                                'appVersion': '1.1.1',
+                              },
+                            );
+                            if (context.mounted) update(() => sent = true);
+                          } catch (e) {
+                            if (context.mounted) {
+                              update(() => error = e.toString());
+                            }
+                          } finally {
+                            if (context.mounted) update(() => busy = false);
+                          }
+                        },
+                  child: Text(busy ? 'Sending…' : 'Send feedback'),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    message.dispose();
   }
 
   String month = todayIndia().substring(0, 7),
@@ -1123,9 +1254,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
           ),
         ]),
         TextButton.icon(
-          onPressed: () => openDeveloperLink(
-            'mailto:info@eucodes.in?subject=FinTrack%20v1.1.1%20feedback',
-          ),
+          onPressed: () => giveFeedback(ledger),
           icon: const Icon(Icons.chat_bubble_outline_rounded),
           label: const Text('Give feedback'),
         ),

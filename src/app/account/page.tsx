@@ -3,12 +3,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
-import { MessageSquare, ArrowLeft, LogOut, UserRound, Camera, Pencil, LoaderCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, LogOut, UserRound, Camera, Pencil, LoaderCircle, Trash2 } from 'lucide-react';
 import { useFinance } from '@/components/finance-provider';
 import { useConfirm } from '@/components/confirm-dialog';
 import { Field, inputClass, buttonClass } from '@/components/finance-forms';
 import { prepareProfilePhoto } from '@/lib/profile-photo';
-import { FEEDBACK_URL } from '@/lib/app-info';
+import { FeedbackForm } from '@/components/feedback-form';
 import { toast } from 'sonner';
 
 type Profile = { name: string; email: string; phone: string; image: string | null; photoUploadEnabled: boolean };
@@ -124,7 +124,7 @@ export default function AccountPage() {
       </form>}
     </section>
     <div className="mt-auto space-y-3 pt-5">
-      <a href={FEEDBACK_URL} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-card px-5 py-3 text-sm font-semibold hover:bg-muted"><MessageSquare size={18}/>Give feedback</a>
+      <FeedbackForm/>
       <button disabled={busy} onClick={() => void logout()} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#fce8e6] px-5 py-4 text-sm font-bold text-[#9c3030] transition-colors hover:bg-[#f8d9d6] dark:bg-[#482829] dark:text-[#ffc5bf] dark:hover:bg-[#593031]"><LogOut size={18}/>Sign out</button>
     </div>
   </div>;
