@@ -1,10 +1,9 @@
 'use client';
 /* eslint-disable @next/next/no-img-element -- This private photo endpoint needs the signed-in user's cookies. */
 
-import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
-import { LogOut, Settings, ShieldCheck, UserRound, Camera, Pencil, LoaderCircle, Trash2 } from 'lucide-react';
+import { LogOut, UserRound, Camera, Pencil, LoaderCircle, Trash2 } from 'lucide-react';
 import { useFinance } from '@/components/finance-provider';
 import { useConfirm } from '@/components/confirm-dialog';
 import { Field, inputClass, buttonClass } from '@/components/finance-forms';
@@ -20,7 +19,7 @@ async function profileResponse(response: Response): Promise<Profile> {
 
 export default function AccountPage() {
   const { data: session, update } = useSession();
-  const { status, pending, store } = useFinance();
+  const { pending, store } = useFinance();
   const ask = useConfirm();
 
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -86,16 +85,20 @@ export default function AccountPage() {
       <h1 className="mt-1 text-3xl font-semibold tracking-tight">My account</h1>
     </div>
     <section className="fin-panel p-5 sm:p-6" aria-busy={loading || busy}>
-      <div role="group" aria-label="Profile actions" className="mb-3 flex justify-end gap-1">
-        <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose profile photo" className="hidden" onChange={event => void changePhoto(event.target.files?.[0])}/>
-        {editing && <button type="button" aria-label={profile?.image ? 'Change photo' : 'Upload photo'} title={profile?.image ? 'Change photo' : 'Upload photo'} disabled={busy || loading || !profile?.photoUploadEnabled} className="grid size-11 shrink-0 place-items-center rounded-full bg-muted text-foreground transition-colors hover:bg-accent disabled:opacity-50" onClick={() => fileInput.current?.click()}>{busy ? <LoaderCircle size={18} className="motion-safe:animate-spin"/> : <Camera size={18}/>}</button>}
-        {editing && profile?.image && <button type="button" aria-label="Remove photo" title="Remove photo" disabled={busy} className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50" onClick={() => void changePhoto(undefined, true)}><Trash2 size={18}/></button>}
+      <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose profile photo" className="hidden" onChange={event => void changePhoto(event.target.files?.[0])}/>
+      {!editing && <div role="group" aria-label="Profile actions" className="mb-3 flex justify-end gap-1">
         {!editing && <button type="button" aria-label="Edit details" title="Edit details" disabled={busy || loading || !profile} className="grid size-11 shrink-0 place-items-center rounded-full text-foreground transition-colors hover:bg-muted disabled:opacity-50" onClick={startEdit}><Pencil size={18}/></button>}
-      </div>
+      </div>}
       <div className="flex flex-wrap items-center gap-4">
+        <div className="shrink-0">
         <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-full bg-accent text-accent-foreground">
           {profile?.image && !photoFailed ? <img onError={() => setPhotoFailed(true)} src={profile.image} alt="Your profile photo" className="size-full object-cover"/> : <UserRound size={32}/>}
         </span>
+        {editing && <div role="group" aria-label="Photo actions" className="mt-2 flex items-center gap-1">
+          <button type="button" aria-label={profile?.image ? 'Change photo' : 'Upload photo'} title={profile?.image ? 'Change photo' : 'Upload photo'} disabled={busy || loading || !profile?.photoUploadEnabled} className="grid size-11 shrink-0 place-items-center rounded-full bg-muted text-foreground transition-colors hover:bg-accent disabled:opacity-50" onClick={() => fileInput.current?.click()}>{busy ? <LoaderCircle size={18} className="motion-safe:animate-spin"/> : <Camera size={18}/>}</button>
+          {profile?.image && <button type="button" aria-label="Remove photo" title="Remove photo" disabled={busy} className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50" onClick={() => void changePhoto(undefined, true)}><Trash2 size={18}/></button>}
+        </div>}
+        </div>
         <div className="min-w-0 flex-1"><h2 className="break-words text-xl font-semibold">{profile?.name || session?.user?.name || 'Your profile'}</h2><p className="mt-1 break-all text-sm text-muted-foreground">{profile?.email || session?.user?.email || ''}</p></div>
       </div>
       {profile && !profile.photoUploadEnabled && <p className="mt-2 text-xs text-muted-foreground">Photo uploads will be available once Cloudinary is configured.</p>}
@@ -117,13 +120,6 @@ export default function AccountPage() {
         {error && <p role="alert" className="rounded-2xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
         <div className="flex flex-wrap gap-3"><button className={buttonClass} disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button><button type="button" className="rounded-full bg-muted px-5 py-3 text-sm" disabled={busy} onClick={() => { setEditing(false); setError(''); setDraft({ name: '', email: '', phone: '', currentPassword: '' }); }}>Cancel</button></div>
       </form>}
-    </section>
-    <section className="fin-panel p-6">
-      <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#e8f5e6] text-[#315845]"><ShieldCheck size={21}/></span>
-        <div><h2 className="font-bold">Your data</h2><p className="mt-1 text-sm text-muted-foreground">{status} · {pending} pending {pending === 1 ? 'change' : 'changes'}</p></div>
-      </div>
-      <Link href="/settings" className="mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"><Settings size={17}/>Settings</Link>
     </section>
     <div className="mt-auto pt-5">
       <button disabled={busy} onClick={() => void logout()} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#fce8e6] px-5 py-4 text-sm font-bold text-[#9c3030] transition-colors hover:bg-[#f8d9d6] dark:bg-[#482829] dark:text-[#ffc5bf] dark:hover:bg-[#593031]"><LogOut size={18}/>Sign out</button>

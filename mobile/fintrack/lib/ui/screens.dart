@@ -1094,17 +1094,6 @@ class _FinScreenState extends ConsumerState<FinScreen>
             ],
           ),
         ]),
-        panel('Your data', [
-          Text(
-            '${ledger.status} · ${ledger.queue.length} pending ${ledger.queue.length == 1 ? 'change' : 'changes'}',
-          ),
-          const SizedBox(height: 12),
-          FilledButton.tonalIcon(
-            onPressed: () => context.go('/settings'),
-            icon: const Icon(Icons.settings_outlined),
-            label: const Text('Settings'),
-          ),
-        ]),
       ]);
     }
     return Scaffold(
