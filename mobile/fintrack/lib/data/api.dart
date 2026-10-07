@@ -18,7 +18,7 @@ class CloudApi {
   Data? session;
   String baseUrl = const String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://jaseelfintrack.vercel.app',
+    defaultValue: 'https://fintrack.eucodes.tech',
   );
   Future<void>? _refreshing;
   CloudApi({http.Client? client, FlutterSecureStorage? storage})
@@ -44,6 +44,7 @@ class CloudApi {
   }) async {
     final headers = <String, String>{
       'Content-Type': 'application/json',
+      'X-FinTrack-Finance-Version': '2',
       if (authenticated && session != null)
         'Authorization': 'Bearer ${session!['accessToken']}',
     };
@@ -53,6 +54,12 @@ class CloudApi {
                 ? client.get(uri, headers: headers)
                 : method == 'DELETE'
                 ? client.delete(
+                    uri,
+                    headers: headers,
+                    body: jsonEncode(body ?? {}),
+                  )
+                : method == 'PATCH'
+                ? client.patch(
                     uri,
                     headers: headers,
                     body: jsonEncode(body ?? {}),
@@ -130,6 +137,48 @@ class CloudApi {
     );
     session!['baseUrl'] = baseUrl;
     await _persist();
+  }
+
+  Future<void> updateUser(Data profile) async {
+    session?['user'] = {
+      ...Map<String, dynamic>.from(session?['user'] ?? {}),
+      'name': profile['name'],
+      'email': profile['email'],
+      'image': profile['image'],
+    };
+    await _persist();
+  }
+
+  Future<Data> uploadPhoto(List<int> bytes) async {
+    Future<Data> send() async {
+      final response = await client
+          .post(
+            Uri.parse('$baseUrl/api/v1/account/photo'),
+            headers: {
+              'Authorization': 'Bearer ${session?['accessToken']}',
+              'Content-Type': 'image/jpeg',
+            },
+            body: bytes,
+          )
+          .timeout(const Duration(seconds: 45));
+      final data = jsonDecode(response.body) as Data;
+      if (response.statusCode >= 400) {
+        throw ApiException(
+          response.statusCode,
+          text(data, 'error', 'Upload failed'),
+        );
+      }
+      return data;
+    }
+
+    try {
+      return await send();
+    } on ApiException catch (e) {
+      if (e.status != 401 || session == null) rethrow;
+      _refreshing ??= _refresh().whenComplete(() => _refreshing = null);
+      await _refreshing;
+      return send();
+    }
   }
 
   Future<void> logout() async {

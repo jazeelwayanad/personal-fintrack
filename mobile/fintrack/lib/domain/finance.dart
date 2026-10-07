@@ -70,6 +70,9 @@ Data cycle(String today, int payday) {
       : {'start': day(d.year, d.month - 1, payday), 'end': here};
 }
 
+String addDays(String date, int count) =>
+    iso(DateTime.parse('${date}T00:00:00Z').add(Duration(days: count)));
+
 class Occurrence {
   final Doc doc;
   final String state;
@@ -102,15 +105,51 @@ List<Occurrence> occurrences(List<Doc> records, String today, String through) {
   for (final plan in active.where((r) => r.kind == 'plan')) {
     final p = plan.data, base = DateTime.tryParse(text(plan.data, 'startDate'));
     if (base == null) continue;
-    for (var i = 0; i < 1213; i++) {
-      final recurrence = text(p, 'recurrence');
+    final recurrence = text(p, 'recurrence'),
+        recharge = text(p, 'planType') == 'recharge';
+    final interval = recurrence == 'weekly' ? 7 : amount(p, 'intervalDays', 1);
+    var anchor = text(p, 'startDate');
+    if (recharge) {
+      final paidDates =
+          active
+              .where(
+                (r) =>
+                    r.kind == 'transaction' &&
+                    text(r.data, 'occurrenceId').startsWith('${plan.id}:'),
+              )
+              .map((r) => text(r.data, 'date'))
+              .toList()
+            ..sort();
+      if (paidDates.isNotEmpty) anchor = addDays(paidDates.last, interval);
+      final skipped = active
+          .where(
+            (r) =>
+                r.kind == 'occurrence' &&
+                text(r.data, 'planId') == plan.id &&
+                text(r.data, 'status') == 'skipped',
+          )
+          .map((r) => text(r.data, 'date'))
+          .toSet();
+      while (skipped.contains(anchor)) {
+        anchor = addDays(anchor, interval);
+      }
+    }
+    for (var i = 0; i <= 36890; i++) {
       if (i > 0 && recurrence == 'once') break;
-      final date = day(
-        base.year + (recurrence == 'yearly' ? i : 0),
-        base.month + (recurrence == 'monthly' ? i : 0),
-        base.day,
-      );
+      final date = recurrence == 'custom' || recurrence == 'weekly'
+          ? (recharge && i > 0
+                ? addDays(
+                    anchor.compareTo(today) < 0 ? today : anchor,
+                    interval * i,
+                  )
+                : addDays(anchor, interval * i))
+          : day(
+              base.year + (recurrence == 'yearly' ? i : 0),
+              base.month + (recurrence == 'monthly' ? i : 0),
+              base.day,
+            );
       if (date.compareTo(through) > 0 ||
+          date.compareTo('2100-12-31') > 0 ||
           (text(p, 'endDate').isNotEmpty &&
               date.compareTo(text(p, 'endDate')) > 0) ||
           (text(p, 'pausedAt').isNotEmpty &&
@@ -134,7 +173,19 @@ List<Occurrence> occurrences(List<Doc> records, String today, String through) {
     (r) =>
         r.kind == 'occurrence' && text(r.data, 'date').compareTo(through) <= 0,
   )) {
-    map[item.id] = item;
+    final plan = active
+        .where((p) => p.id == text(item.data, 'planId') && p.kind == 'plan')
+        .firstOrNull;
+    if (text(plan?.data ?? {}, 'planType') != 'recharge' ||
+        text(item.data, 'status') == 'skipped' ||
+        active.any(
+          (t) =>
+              t.kind == 'transaction' &&
+              text(t.data, 'occurrenceId') == item.id,
+        ) ||
+        map.containsKey(item.id)) {
+      map[item.id] = item;
+    }
   }
   final payments = {
     for (final t in active.where(
@@ -191,35 +242,68 @@ Data summary(List<Doc> records, String today) {
           )
           .fold(0, (v, r) => v + amount(r.data, 'amount'));
   final upcoming = occurrences(records, today, period['end']);
-  final commitments = upcoming
+  final outstanding = upcoming
       .where(
         (o) =>
             !o.paid &&
             o.state != 'skipped' &&
-            text(o.doc.data, 'type') == 'expense',
+            text(o.doc.data, 'type') == 'expense' &&
+            text(o.doc.data, 'date').compareTo(period['end']) < 0,
       )
-      .fold(0, (v, o) => v + amount(o.doc.data, 'amount'));
-  final budgets = active.where((r) => r.kind == 'budget').map((r) {
-    final categoryId = text(r.data, 'categoryId');
+      .toList();
+  final commitments = outstanding.fold(
+    0,
+    (v, o) => v + amount(o.doc.data, 'amount'),
+  );
+  final manual = active.where((r) => r.kind == 'budget').toList();
+  final categoryIds = {
+    ...manual.map((r) => text(r.data, 'categoryId')),
+    ...active
+        .where((r) => r.kind == 'plan' && text(r.data, 'type') == 'expense')
+        .map((r) => text(r.data, 'categoryId')),
+  };
+  final budgets = categoryIds.map((categoryId) {
+    final entry = manual
+        .where((r) => text(r.data, 'categoryId') == categoryId)
+        .firstOrNull;
+    final planned = upcoming
+        .where(
+          (o) =>
+              o.state != 'skipped' &&
+              text(o.doc.data, 'type') == 'expense' &&
+              text(o.doc.data, 'categoryId') == categoryId &&
+              text(o.doc.data, 'date').compareTo(period['start']) >= 0 &&
+              text(o.doc.data, 'date').compareTo(period['end']) < 0,
+        )
+        .fold(0, (v, o) => v + amount(o.doc.data, 'amount'));
     final spent = transactions
         .where(
           (t) =>
               text(t.data, 'type') == 'expense' &&
-              text(t.data, 'occurrenceId').isEmpty &&
               text(t.data, 'categoryId') == categoryId &&
               text(t.data, 'date').compareTo(period['start']) >= 0 &&
               text(t.data, 'date').compareTo(period['end']) < 0,
         )
         .fold(0, (v, t) => v + amount(t.data, 'amount'));
+    final outstandingAmount = outstanding
+        .where((o) => text(o.doc.data, 'categoryId') == categoryId)
+        .fold(0, (v, o) => v + amount(o.doc.data, 'amount'));
+    final limit = math.max(amount(entry?.data ?? {}, 'amount'), planned),
+        remaining = limit - spent;
     return <String, dynamic>{
-      'id': r.id,
+      'id': 'budget:$categoryId',
       'categoryId': categoryId,
-      'amount': amount(r.data, 'amount'),
+      'amount': limit,
+      'manual': entry == null ? null : amount(entry.data, 'amount'),
+      'source': entry == null ? 'plans' : 'manual',
+      'planned': planned,
       'spent': spent,
-      'remaining': math.max(0, amount(r.data, 'amount') - spent),
+      'remaining': remaining,
+      'outstanding': outstandingAmount,
+      'reserve': math.max(0, remaining - outstandingAmount),
     };
   }).toList();
-  final reserved = budgets.fold(0, (v, b) => v + amount(b, 'remaining')),
+  final reserved = budgets.fold(0, (v, b) => v + amount(b, 'reserve')),
       savings = amount(preferences, 'savings');
   final periodTransactions = transactions.where(
     (r) =>
@@ -256,10 +340,10 @@ Data checkSpending(
           .firstOrNull;
   final cash =
       amount(totals, 'unallocated') +
-      (budget == null ? 0 : amount(budget, 'remaining'));
+      (budget == null ? 0 : amount(budget, 'reserve'));
   final maximum = math.max(
     0,
-    budget == null ? cash : math.min(amount(budget, 'remaining'), cash),
+    budget == null ? cash : math.min(amount(budget, 'reserve'), cash),
   );
   return {
     'maximum': maximum,
@@ -268,6 +352,32 @@ Data checkSpending(
     'remaining': maximum - proposed,
     'balanceAfter': amount(totals, 'balance') - proposed,
     'budgetRemaining': budget?['remaining'],
+  };
+}
+
+Data monthlyForecast(List<Doc> records, String today, String month) {
+  final start = '$month-01',
+      d = DateTime.parse(start),
+      end = day(d.year, d.month + 1, 1);
+  final items = occurrences(records, today, end)
+      .where(
+        (o) =>
+            o.state != 'skipped' &&
+            text(o.doc.data, 'date').compareTo(start) >= 0 &&
+            text(o.doc.data, 'date').compareTo(end) < 0,
+      )
+      .toList();
+  return {
+    'start': start,
+    'end': end,
+    'items': items,
+    'count': items.length,
+    'expenses': items
+        .where((o) => text(o.doc.data, 'type') == 'expense')
+        .fold(0, (v, o) => v + amount(o.doc.data, 'amount')),
+    'income': items
+        .where((o) => text(o.doc.data, 'type') == 'income')
+        .fold(0, (v, o) => v + amount(o.doc.data, 'amount')),
   };
 }
 

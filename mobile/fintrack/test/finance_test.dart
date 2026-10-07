@@ -4,9 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fintrack/domain/finance.dart';
 
 void main() {
-  final cases =
-      jsonDecode(File('../../fixtures/finance.json').readAsStringSync())
-          as List;
+  final cases = [
+    ...jsonDecode(File('../../fixtures/finance.json').readAsStringSync())
+        as List,
+    ...jsonDecode(File('../../fixtures/finance-v2.json').readAsStringSync())
+        as List,
+  ];
   for (final scenario in cases) {
     test(scenario['name'], () {
       final records = (scenario['records'] as List)
@@ -27,6 +30,16 @@ void main() {
         for (final key in ['maximum', 'allowed', 'shortfall']) {
           expect(result[key], c[key], reason: key);
         }
+      }
+      if (scenario['forecast'] != null) {
+        final f = scenario['forecast'];
+        final forecast = monthlyForecast(
+          records,
+          scenario['today'],
+          f['month'],
+        );
+        expect(forecast['count'], f['count']);
+        expect(forecast['expenses'], f['expenses']);
       }
       if (scenario['dates'] != null) {
         expect(

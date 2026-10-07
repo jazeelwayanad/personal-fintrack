@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
@@ -7,7 +8,7 @@ import { FinanceStore } from '@/lib/finance/store';
 import { Document } from '@/lib/finance/model';
 const Context = createContext<{ store: FinanceStore; records: Document[]; status: string; pending: number } | null>(null);
 function LedgerLoading({ children }: { children: ReactNode }) {
-  return <div role="status" className="mx-auto max-w-6xl space-y-5 px-4 py-12"><p className="text-sm font-medium text-muted-foreground">{children}</p><div aria-hidden="true" className="grid grid-cols-2 gap-4 motion-safe:animate-pulse"><div className="h-36 rounded-xl bg-muted"/><div className="h-36 rounded-xl bg-muted"/><div className="col-span-2 h-60 rounded-xl bg-muted"/></div></div>;
+  return <div role="status" className="mx-auto max-w-6xl space-y-5 px-4 py-12"><Image src="/icons/icon-192.png" alt="FinTrack" width={64} height={64} className="rounded-2xl" priority/><p className="text-sm font-medium text-muted-foreground">{children}</p><div aria-hidden="true" className="grid grid-cols-2 gap-4 motion-safe:animate-pulse"><div className="h-36 rounded-xl bg-muted"/><div className="h-36 rounded-xl bg-muted"/><div className="col-span-2 h-60 rounded-xl bg-muted"/></div></div>;
 }
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
@@ -29,6 +30,7 @@ function Account({ id, children }: { id: string; children: ReactNode }) {
   }, [store]);
   if (!records) return <LedgerLoading>Opening your ledger…</LedgerLoading>;
   return <Context.Provider value={{ store, records, status: store.status, pending }}>
+    {store.status.startsWith('Update FinTrack') && <div role="alert" className="mb-5 rounded-3xl bg-card p-5 text-sm"><p className="font-semibold">Update needed to reconnect</p><p className="mt-1 text-muted-foreground">{store.status}</p><button type="button" className="mt-3 min-h-11 rounded-full bg-primary px-5 font-semibold text-primary-foreground" onClick={() => window.location.reload()}>Refresh FinTrack</button></div>}
     {store.status === 'Please sign in again.' && <div role="alert" className="mb-5 rounded-3xl bg-card p-5 text-sm"><p className="font-semibold">Sign in again to reconnect your ledger</p><p className="mt-1 text-muted-foreground">Your saved entries remain on this device.</p><button type="button" className="mt-3 min-h-11 rounded-full bg-primary px-5 font-semibold text-primary-foreground" onClick={() => { store.stop(); void signOut({ callbackUrl: '/login' }); }}>Sign in again</button></div>}
     {children}
   </Context.Provider>;

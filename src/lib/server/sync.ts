@@ -40,7 +40,7 @@ function validateReferences(records: Document[], changed: Document[]) {
       if (map.get(s(d, 'paymentMethodId'))?.kind !== 'paymentMethod') throw new ApiError(400, 'Choose a valid payment method.');
       if (s(d, 'occurrenceId')) {
         const occurrence = map.get(s(d, 'occurrenceId'));
-        if (!occurrence || occurrence.kind !== 'occurrence' || s(occurrence.data, 'type') !== s(d, 'type') || s(occurrence.data, 'status') === 'skipped') throw new ApiError(400, 'Invalid scheduled payment.');
+        if (!occurrence || occurrence.kind !== 'occurrence' || s(occurrence.data, 'type') !== s(d, 'type') || s(occurrence.data,'categoryId') !== s(d,'categoryId') || s(occurrence.data, 'status') === 'skipped') throw new ApiError(400, 'Invalid scheduled payment.');
         if (records.some(t => !t.deleted && t.kind === 'transaction' && t.id !== r.id && s(t.data, 'occurrenceId') === s(d, 'occurrenceId'))) throw new ApiError(409, 'This payment has already been recorded. Sync and review it.');
       }
     }

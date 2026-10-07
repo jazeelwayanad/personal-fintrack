@@ -1,3 +1,4 @@
+import { requireFinanceCapability } from '@/lib/server/finance-capability';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { api, body } from '@/lib/server/http';
@@ -7,7 +8,7 @@ import { Change } from '@/lib/finance/model';
 const item = z.object({ syncId: z.string(), deletedAt: z.number().nullable().optional() }).passthrough();
 const schema = z.object({ transactions: z.array(item).default([]), categories: z.array(item).default([]), paymentMethods: z.array(item).default([]) });
 export async function POST(req: Request) { return api(async () => {
-  const userId = await requireUser(req), input = schema.parse(await body(req));
+  const userId = await requireUser(req); requireFinanceCapability(req); const input = schema.parse(await body(req));
   const current = await pull(userId, 0), byId = new Map(current.records.map(r => [r.id, r]));
   const changes: Change[] = [];
   for (const c of input.categories) changes.push({ id: c.syncId, kind: 'category', baseRevision: byId.get(c.syncId)?.revision ?? 0, deleted: !!c.deletedAt, data: { name: c.name, type: c.type, color: c.color, icon: c.icon ?? '' } });

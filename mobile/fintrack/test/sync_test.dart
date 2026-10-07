@@ -11,14 +11,23 @@ class SyncApi extends CloudApi {
   final downloading = Completer<void>();
   Completer<void>? holdDownload;
   bool offline = false;
+  bool upgradeRequired = false;
   int revision = 0;
 
   SyncApi() {
-    session = {'user': {'id': 'sync-test'}};
+    session = {
+      'user': {'id': 'sync-test'},
+    };
   }
 
   @override
   Future<Data> request(String path, {String method = 'GET', Data? body}) async {
+    if (upgradeRequired) {
+      throw ApiException(
+        426,
+        'Update FinTrack. Your pending changes are safe.',
+      );
+    }
     if (offline) throw ApiException(503, 'Server unavailable');
     if (method == 'POST') {
       final records = <Data>[];
@@ -55,10 +64,21 @@ void main() {
     api.client.close();
   });
 
-  Doc preferences() => Doc('preferences', 'preferences', {
-    ...defaults,
-    'payday': 25,
-  });
+  Doc preferences() =>
+      Doc('preferences', 'preferences', {...defaults, 'payday': 25});
+
+  test(
+    'upgrade-required response retains queued edits and local records',
+    () async {
+      api.upgradeRequired = true;
+      await ledger.save([preferences()], autoSync: false);
+      await ledger.sync();
+      expect(ledger.queue, hasLength(1));
+      expect(ledger.records.single.data['payday'], 25);
+      expect((await database.read())!['queue'], hasLength(1));
+      expect(ledger.status, contains('Update FinTrack'));
+    },
+  );
 
   test('first sync uploads default categories and payment methods', () async {
     await ledger.sync();

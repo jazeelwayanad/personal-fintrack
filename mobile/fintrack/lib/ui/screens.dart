@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'navigation.dart';
+import 'patterns.dart';
+import 'account.dart';
 import 'package:uuid/uuid.dart';
 import '../main.dart';
 import '../data/ledger.dart';
@@ -147,7 +149,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
                                 'id': id,
                                 'topic': topic,
                                 'message': message.text,
-                                'appVersion': '1.1.2',
+                                'appVersion': '1.2.0',
                               },
                             );
                             if (context.mounted) update(() => sent = true);
@@ -174,6 +176,8 @@ class _FinScreenState extends ConsumerState<FinScreen>
       planFilter = 'all',
       checkCategory = '';
   final checkController = TextEditingController();
+  String search = '', forecastMonth = todayIndia().substring(0, 7);
+  bool hideBalances = false;
   PushNotifications? notifications;
   @override
   void initState() {
@@ -232,11 +236,11 @@ class _FinScreenState extends ConsumerState<FinScreen>
     }
   }
 
-  Widget panel(String title, List<Widget> children) => Container(
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(24),
-    ),
+  Widget panel(String title, List<Widget> children) => Material(
+    color: Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xff1c3535)
+        : Colors.white,
+    borderRadius: BorderRadius.circular(24),
     child: Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -254,116 +258,63 @@ class _FinScreenState extends ConsumerState<FinScreen>
       ),
     ),
   );
-  Widget metric(String label, int value, {bool hero = false}) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      padding: EdgeInsets.all(hero ? 24 : 20),
-      decoration: BoxDecoration(
-        color: hero ? const Color(0xff073b3b) : colors.surface,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: hero
-                        ? const Color(0xffbbddc4)
-                        : colors.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
+  Widget metric(String label, int value, {bool hero = false}) => Container(
+    padding: EdgeInsets.all(hero ? 24 : 20),
+    decoration: BoxDecoration(
+      color: hero
+          ? const Color(0xff073b3b)
+          : Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: hero
+                      ? const Color(0xffbbddc4)
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 14,
                 ),
               ),
-              Icon(
-                hero
-                    ? Icons.auto_awesome_rounded
-                    : Icons.account_balance_wallet_outlined,
-                color: hero ? const Color(0xffbbddc4) : colors.primary,
-                size: 22,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            rupees(value),
-            style: TextStyle(
-              fontSize: hero ? 34 : 28,
-              letterSpacing: -.8,
-              fontWeight: FontWeight.w800,
-              color: hero ? Colors.white : null,
             ),
-          ),
-          if (hero) ...[
-            const SizedBox(height: 8),
-            const Text(
-              'After bills, savings and category reserves',
-              style: TextStyle(color: Color(0xffbbddc4), fontSize: 12),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
+            if (hero)
+              IconButton(
+                tooltip: hideBalances ? 'Show balance' : 'Hide balance',
+                onPressed: () => setState(() => hideBalances = !hideBalances),
+                icon: const FinIcon('eye', color: Colors.white),
               ),
-              child: Row(
-                children: [
-                  for (final action in [
-                    (Icons.arrow_upward_rounded, 'Spend', 'expense'),
-                    (Icons.arrow_downward_rounded, 'Income', 'income'),
-                    (Icons.event_note_rounded, 'Plans', 'plans'),
-                  ])
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () {
-                          if (action.$3 == 'plans') {
-                            context.go('/plans');
-                          } else {
-                            editRecord(
-                              context,
-                              ref.read(ledgerProvider),
-                              'transaction',
-                              initial: Doc(const Uuid().v4(), 'transaction', {
-                                'type': action.$3,
-                                'amount': 0,
-                                'date': todayIndia(),
-                                'description': '',
-                              }),
-                            );
-                          }
-                        },
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              action.$1,
-                              size: 20,
-                              color: const Color(0xff171b19),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              action.$2,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xff171b19),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
           ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          hideBalances ? '••••' : rupees(value),
+          style: TextStyle(
+            fontSize: hero ? 38 : 28,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -1,
+            color: hero ? Colors.white : null,
+          ),
+        ),
+        if (hero) ...[
+          const SizedBox(height: 10),
+          const Text(
+            'After bills, savings & category reserves',
+            style: TextStyle(fontSize: 12, color: Color(0xffbbddc4)),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            '${summary(ref.read(ledgerProvider).records, todayIndia())['period']['start']} – ${addDays(summary(ref.read(ledgerProvider).records, todayIndia())['period']['end'], -1)} · INR',
+            style: const TextStyle(fontSize: 12, color: Color(0xffbbddc4)),
+          ),
         ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
 
   Future<void> remove(Ledger ledger, Doc record) async {
     final name = text(record.data, 'name').isNotEmpty
@@ -407,7 +358,8 @@ class _FinScreenState extends ConsumerState<FinScreen>
           (r) =>
               r.kind == 'transaction' &&
               text(r.data, 'occurrenceId').isEmpty &&
-              text(r.data, 'type') == text(o.doc.data, 'type'),
+              text(r.data, 'type') == text(o.doc.data, 'type') &&
+              text(r.data, 'categoryId') == text(o.doc.data, 'categoryId'),
         )
         .toList();
     final selected = await showModalBottomSheet<Doc>(
@@ -512,6 +464,16 @@ class _FinScreenState extends ConsumerState<FinScreen>
             children: [
               Row(
                 children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: FinIcon(
+                      'plans',
+                      color: categoryColor(
+                        ledger.active,
+                        text(o.doc.data, 'categoryId'),
+                      ),
+                    ),
+                  ),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -614,16 +576,16 @@ class _FinScreenState extends ConsumerState<FinScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    ledger.active
-                            .where((r) => r.id == b['categoryId'])
-                            .firstOrNull
-                            ?.data['name'] ??
-                        'Category',
-                  ),
+                Text(
+                  ledger.active
+                          .where((r) => r.id == b['categoryId'])
+                          .firstOrNull
+                          ?.data['name'] ??
+                      'Category',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 Text('${rupees(b['spent'])} / ${rupees(b['amount'])}'),
               ],
@@ -635,14 +597,16 @@ class _FinScreenState extends ConsumerState<FinScreen>
                   : 0,
               minHeight: 7,
               borderRadius: BorderRadius.circular(8),
-              color: b['spent'] > b['amount'] ? Colors.red : null,
+              color: b['spent'] > b['amount']
+                  ? Colors.red
+                  : categoryColor(ledger.active, b['categoryId']),
             ),
             const SizedBox(height: 4),
             Row(
               children: [
                 Expanded(
                   child: Text(
-                    '${rupees(b['remaining'])} remaining',
+                    '${rupees(b['remaining'])} remaining · Planned ${rupees(b['planned'])}\n${b['source'] == 'plans' ? 'Calculated from plans' : 'Manual limit includes plans'}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
@@ -652,9 +616,29 @@ class _FinScreenState extends ConsumerState<FinScreen>
                       context,
                       ledger,
                       'budget',
-                      initial: ledger.active.firstWhere((r) => r.id == b['id']),
+                      initial:
+                          ledger.active
+                              .where((r) => r.id == b['id'])
+                              .firstOrNull ??
+                          Doc(b['id'], 'budget', {
+                            'categoryId': b['categoryId'],
+                            'amount': b['amount'],
+                          }),
                     ),
-                    child: const Text('Edit'),
+                    child: const Text('Edit limit'),
+                  ),
+                if (edit && b['manual'] != null)
+                  IconButton(
+                    tooltip: 'Use plan total',
+                    icon: const Icon(Icons.auto_awesome_outlined),
+                    onPressed: () => act(() async {
+                      final entry = ledger.active
+                          .where((r) => r.id == b['id'])
+                          .firstOrNull;
+                      if (entry != null) {
+                        await ledger.save([entry.copy(deleted: true)]);
+                      }
+                    }),
                   ),
               ],
             ),
@@ -665,13 +649,20 @@ class _FinScreenState extends ConsumerState<FinScreen>
   @override
   Widget build(BuildContext context) {
     final ledger = ref.watch(ledgerProvider);
-    if (ledger.loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (ledger.loading ||
+        (ledger.signedIn &&
+            ledger.records.isEmpty &&
+            ledger.status == 'Syncing')) {
+      return const Scaffold(body: BrandLoading(label: 'Opening FinTrack…'));
     }
     if (!ledger.signedIn) return LoginScreen(ledger: ledger);
-    notifications ??= PushNotifications(ledger.api, (route) {
-      if (mounted) context.go(route.startsWith('/plans') ? route : '/plans');
-    })..initialize().catchError((_) {});
+    if (widget.screen == 'home') {
+      notifications ??= PushNotifications(ledger.api, (route) {
+        if (mounted) {
+          navigateTo(context, route.startsWith('/plans') ? route : '/plans');
+        }
+      })..initialize().catchError((_) {});
+    }
     final today = todayIndia(),
         totals = summary(ledger.records, today),
         active = ledger.active;
@@ -691,8 +682,13 @@ class _FinScreenState extends ConsumerState<FinScreen>
     if (widget.screen == 'home') {
       sections.addAll([
         metric('Available credit', amount(totals, 'unallocated'), hero: true),
-        metric('Current balance', amount(totals, 'balance')),
-        panel('Money reserved', [
+        quickActions(ledger),
+        panel('Balance breakdown', [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Current balance'),
+            trailing: Text(rupees(amount(totals, 'balance'))),
+          ),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Unpaid bills'),
@@ -726,90 +722,102 @@ class _FinScreenState extends ConsumerState<FinScreen>
       );
       sections.add(
         panel('Can I spend this?', [
-          TextField(
-            controller: checkController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Amount (₹)'),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 14),
-          DropdownButtonFormField<String>(
-            initialValue: active.any((r) => r.id == checkCategory)
-                ? checkCategory
-                : null,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Category'),
-            items: active
-                .where(
-                  (r) =>
-                      r.kind == 'category' && text(r.data, 'type') == 'expense',
-                )
-                .map(
-                  (r) => DropdownMenuItem(
-                    value: r.id,
-                    child: Text(text(r.data, 'name')),
-                  ),
-                )
-                .toList(),
-            onChanged: (v) => setState(() => checkCategory = v ?? ''),
-          ),
-          const SizedBox(height: 14),
-          Text('Available: ${rupees(amount(check, 'maximum'))}'),
-          if (checkController.text.isNotEmpty && checkCategory.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              check['allowed'] == true
-                  ? 'Within your spending limit'
-                  : 'Over the limit by ${rupees(amount(check, 'shortfall'))}',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: check['allowed'] == true
-                    ? Colors.green
-                    : Theme.of(context).colorScheme.error,
+          ExpansionTile(
+            key: const PageStorageKey('spending-allowance-expanded'),
+            tilePadding: EdgeInsets.zero,
+            title: const Text('Check before you checkout'),
+            children: [
+              TextField(
+                controller: checkController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(labelText: 'Amount (₹)'),
+                onChanged: (_) => setState(() {}),
               ),
-            ),
-            Text(
-              'Balance after: ${rupees(amount(check, 'balanceAfter'))}\nAllowance remaining: ${rupees(amount(check, 'remaining'))}',
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed:
-                  check['allowed'] != true &&
-                      totals['preferences']['limitMode'] == 'block'
-                  ? null
-                  : () => editRecord(
-                      context,
-                      ledger,
-                      'transaction',
-                      initial: Doc(const Uuid().v4(), 'transaction', {
-                        'type': 'expense',
-                        'amount':
-                            ((double.tryParse(checkController.text) ?? 0) * 100)
-                                .round(),
-                        'categoryId': checkCategory,
-                        'paymentMethodId':
-                            active
-                                .where((r) => r.kind == 'paymentMethod')
-                                .firstOrNull
-                                ?.id ??
-                            '',
-                        'date': today,
-                        'description': '',
-                      }),
-                    ),
-              child: const Text('Record expense'),
-            ),
-          ],
-          const SizedBox(height: 10),
-          Text(
-            'Protects bills, savings, and other category reserves. Expected income is excluded. ${ledger.status == 'Synced' ? '' : 'Using this device’s saved data.'}',
-            style: Theme.of(context).textTheme.bodySmall,
+              const SizedBox(height: 14),
+              DropdownButtonFormField<String>(
+                initialValue: active.any((r) => r.id == checkCategory)
+                    ? checkCategory
+                    : null,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Category'),
+                items: active
+                    .where(
+                      (r) =>
+                          r.kind == 'category' &&
+                          text(r.data, 'type') == 'expense',
+                    )
+                    .map(
+                      (r) => DropdownMenuItem(
+                        value: r.id,
+                        child: Text(text(r.data, 'name')),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => checkCategory = v ?? ''),
+              ),
+              const SizedBox(height: 14),
+              Text('Available: ${rupees(amount(check, 'maximum'))}'),
+              if (checkController.text.isNotEmpty &&
+                  checkCategory.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  check['allowed'] == true
+                      ? 'Within your spending limit'
+                      : 'Over the limit by ${rupees(amount(check, 'shortfall'))}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: check['allowed'] == true
+                        ? Colors.green
+                        : Theme.of(context).colorScheme.error,
+                  ),
+                ),
+                Text(
+                  'Balance after: ${rupees(amount(check, 'balanceAfter'))}\nAllowance remaining: ${rupees(amount(check, 'remaining'))}',
+                ),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed:
+                      check['allowed'] != true &&
+                          totals['preferences']['limitMode'] == 'block'
+                      ? null
+                      : () => editRecord(
+                          context,
+                          ledger,
+                          'transaction',
+                          initial: Doc(const Uuid().v4(), 'transaction', {
+                            'type': 'expense',
+                            'amount':
+                                ((double.tryParse(checkController.text) ?? 0) *
+                                        100)
+                                    .round(),
+                            'categoryId': checkCategory,
+                            'paymentMethodId':
+                                active
+                                    .where((r) => r.kind == 'paymentMethod')
+                                    .firstOrNull
+                                    ?.id ??
+                                '',
+                            'date': today,
+                            'description': '',
+                          }),
+                        ),
+                  child: const Text('Record expense'),
+                ),
+              ],
+              const SizedBox(height: 10),
+              Text(
+                'Protects bills, savings, and other category reserves. Expected income is excluded. ${ledger.status == 'Synced' ? '' : 'Using this device’s saved data.'}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
           ),
         ]),
       );
       sections.add(panel('Category budgets', budgetRows(ledger, totals)));
       sections.add(
-        panel('Upcoming and overdue', [
+        panel('Next payments', [
           payments(
             ledger,
             nextPaymentPerPlan(
@@ -819,6 +827,27 @@ class _FinScreenState extends ConsumerState<FinScreen>
         ]),
       );
     }
+    if (widget.screen == 'home') {
+      final spending = sections.removeAt(sections.length - 3);
+      final budgets = sections.removeAt(sections.length - 2);
+      sections.add(budgets);
+      final recent = active.where((r) => r.kind == 'transaction').toList()
+        ..sort((a, b) => text(b.data, 'date').compareTo(text(a.data, 'date')));
+      sections.add(
+        panel('Recent activity', [
+          if (recent.isEmpty)
+            const FinEmpty(
+              'No transactions yet. Add your first income or expense.',
+            ),
+          for (final t in recent.take(4)) transactionRow(ledger, t),
+          TextButton(
+            onPressed: () => navigateTo(context, '/transactions'),
+            child: const Text('View all'),
+          ),
+        ]),
+      );
+      sections.add(spending);
+    }
     if (widget.screen == 'plans') {
       sections.add(
         panel('Scheduled income and expenses', [
@@ -826,7 +855,15 @@ class _FinScreenState extends ConsumerState<FinScreen>
             scrollDirection: Axis.horizontal,
             child: Row(
               children:
-                  ['all', 'salary', 'income', 'emi', 'subscription', 'expense']
+                  [
+                        'all',
+                        'salary',
+                        'income',
+                        'emi',
+                        'subscription',
+                        'expense',
+                        'recharge',
+                      ]
                       .map(
                         (v) => Padding(
                           padding: const EdgeInsets.only(right: 6),
@@ -847,6 +884,10 @@ class _FinScreenState extends ConsumerState<FinScreen>
           ))
             ListTile(
               contentPadding: EdgeInsets.zero,
+              leading: FinIcon(
+                'plans',
+                color: categoryColor(active, text(p.data, 'categoryId')),
+              ),
               title: Text(text(p.data, 'name')),
               subtitle: Text(
                 '${text(p.data, 'recurrence')} · ${text(p.data, 'startDate')}\n${rupees(amount(p.data, 'amount'))}${text(p.data, 'pausedAt').isNotEmpty ? ' · Paused' : ''}',
@@ -898,6 +939,15 @@ class _FinScreenState extends ConsumerState<FinScreen>
     if (widget.screen == 'transactions') {
       sections.add(
         panel('Your ledger', [
+          TextField(
+            decoration: const InputDecoration(
+              labelText: 'Search transactions',
+              prefixIcon: FinIcon('activity'),
+            ),
+            onChanged: (value) =>
+                setState(() => search = value.trim().toLowerCase()),
+          ),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -929,7 +979,13 @@ class _FinScreenState extends ConsumerState<FinScreen>
                   .where(
                     (r) =>
                         r.kind == 'transaction' &&
-                        text(r.data, 'date').startsWith(month) &&
+                        (month.isEmpty ||
+                            text(r.data, 'date').startsWith(month)) &&
+                        [
+                          text(r.data, 'description'),
+                          labels[text(r.data, 'categoryId')] ?? '',
+                          labels[text(r.data, 'paymentMethodId')] ?? '',
+                        ].join(' ').toLowerCase().contains(search) &&
                         (filter == 'all' || text(r.data, 'type') == filter),
                   )
                   .toList()
@@ -937,49 +993,20 @@ class _FinScreenState extends ConsumerState<FinScreen>
                   (a, b) =>
                       text(b.data, 'date').compareTo(text(a.data, 'date')),
                 )))
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                text(t.data, 'description').isEmpty
-                    ? labels[text(t.data, 'categoryId')] ?? 'Transaction'
-                    : text(t.data, 'description'),
-              ),
-              subtitle: Text(
-                '${text(t.data, 'date')} · ${labels[text(t.data, 'categoryId')]}\n${labels[text(t.data, 'paymentMethodId')]}${text(t.data, 'occurrenceId').isEmpty ? '' : ' · Planned payment'}',
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${text(t.data, 'type') == 'income' ? '+' : '−'}${rupees(amount(t.data, 'amount'))}',
-                    style: TextStyle(
-                      color: text(t.data, 'type') == 'income'
-                          ? Colors.green
-                          : null,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    onSelected: (v) => act(
-                      () => v == 'edit'
-                          ? editRecord(
-                              context,
-                              ledger,
-                              'transaction',
-                              initial: t,
-                            )
-                          : remove(ledger, t),
-                    ),
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Text('Delete'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            transactionRow(ledger, t, editable: true),
+          if (!active.any(
+            (r) =>
+                r.kind == 'transaction' &&
+                (month.isEmpty || text(r.data, 'date').startsWith(month)) &&
+                (filter == 'all' || text(r.data, 'type') == filter) &&
+                [
+                  text(r.data, 'description'),
+                  labels[text(r.data, 'categoryId')] ?? '',
+                  labels[text(r.data, 'paymentMethodId')] ?? '',
+                ].join(' ').toLowerCase().contains(search),
+          ))
+            const FinEmpty(
+              'No matching transactions. Adjust your filters or add a transaction.',
             ),
         ]),
       );
@@ -999,6 +1026,14 @@ class _FinScreenState extends ConsumerState<FinScreen>
           ))
             ListTile(
               contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: categoryColor(active, c.id),
+                  shape: BoxShape.circle,
+                ),
+              ),
               title: Text(text(c.data, 'name')),
               trailing: Text(
                 rupees(
@@ -1047,10 +1082,58 @@ class _FinScreenState extends ConsumerState<FinScreen>
         ]),
       ]);
     }
+    if (widget.screen == 'plans' || widget.screen == 'reports') {
+      final forecast = monthlyForecast(ledger.records, today, forecastMonth);
+      sections.add(
+        panel('Calendar-month forecast', [
+          TextButton.icon(
+            icon: const FinIcon('plans'),
+            label: Text(forecastMonth),
+            onPressed: () async {
+              final selected = await showDatePicker(
+                context: context,
+                initialDate: DateTime.parse('$forecastMonth-01'),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100, 12, 31),
+              );
+              if (selected != null) {
+                setState(() => forecastMonth = iso(selected).substring(0, 7));
+              }
+            },
+          ),
+          Text(
+            '${forecast['count']} scheduled payments',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Expenses ${rupees(forecast['expenses'])} · Income ${rupees(forecast['income'])}',
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Exact recurrence dates, not monthly averages. Recharge dates are estimates until paid; overdue commitments remain reserved separately.',
+            style: TextStyle(fontSize: 12),
+          ),
+          if ((forecast['items'] as List).isEmpty)
+            const FinEmpty('No payments scheduled in this month.'),
+          for (final o in forecast['items'] as List<Occurrence>)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: FinIcon(
+                'plans',
+                color: categoryColor(active, text(o.doc.data, 'categoryId')),
+              ),
+              title: Text(text(o.doc.data, 'name')),
+              subtitle: Text(text(o.doc.data, 'date')),
+              trailing: Text(rupees(amount(o.doc.data, 'amount'))),
+            ),
+        ]),
+      );
+    }
     if (widget.screen == 'settings') {
       sections.add(
         panel('About FinTrack', [
-          const Text('Version 1.1.2'),
+          const Text('Version 1.2.0'),
           const SizedBox(height: 8),
           TextButton(
             onPressed: () => openDeveloperLink('https://eucodes.in/'),
@@ -1215,56 +1298,28 @@ class _FinScreenState extends ConsumerState<FinScreen>
       );
     }
     if (widget.screen == 'account') {
-      final user = Map<String, dynamic>.from(
-        ledger.api.session?['user'] as Map? ?? {},
+      return AccountScreen(
+        ledger: ledger,
+        feedback: () => giveFeedback(ledger),
+        onSignOut: () => act(() async {
+          if (ledger.queue.isNotEmpty &&
+              !await confirm(
+                context,
+                'Your unsynced changes will remain on this device. Sign out?',
+                action: 'Sign out',
+              )) {
+            return;
+          }
+          await ledger.logout();
+          if (context.mounted) navigateTo(context, '/');
+        }),
       );
-      final name = (user['name'] as String?)?.trim();
-      sections.addAll([
-        panel('Profile', [
-          Row(
-            children: [
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: const Color(0xfff5ff76),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Icon(Icons.person_outline_rounded, size: 31),
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name?.isNotEmpty == true ? name! : 'FinTrack account',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      user['email'] as String? ?? '',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ]),
-        TextButton.icon(
-          onPressed: () => giveFeedback(ledger),
-          icon: const Icon(Icons.chat_bubble_outline_rounded),
-          label: const Text('Give feedback'),
-        ),
-      ]);
     }
     return Scaffold(
       appBar: AppBar(
         leading: widget.screen == 'account'
             ? IconButton(
-                onPressed: () => context.go('/'),
+                onPressed: () => navigateBack(context),
                 icon: const Icon(Icons.arrow_back_rounded),
                 tooltip: 'Back to home',
               )
@@ -1281,7 +1336,10 @@ class _FinScreenState extends ConsumerState<FinScreen>
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(11),
-                child: Image.asset('assets/fintrack-icon.png', fit: BoxFit.cover),
+                child: Image.asset(
+                  'assets/fintrack-icon.png',
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -1304,21 +1362,29 @@ class _FinScreenState extends ConsumerState<FinScreen>
         ),
         actions: [
           IconButton(
+            tooltip: 'Toggle theme',
+            onPressed: () => ref.read(themeProvider.notifier).state =
+                ref.read(themeProvider) == ThemeMode.dark
+                ? ThemeMode.light
+                : ThemeMode.dark,
+            icon: const FinIcon('sun'),
+          ),
+          IconButton(
             constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
             onPressed: () => ledger.sync(),
-            icon: const Icon(Icons.sync),
+            icon: const FinIcon('sync'),
             tooltip: 'Sync now · ${ledger.status}',
           ),
           if (widget.screen != 'account')
             IconButton(
-              onPressed: () => context.go('/account'),
+              onPressed: () => navigateTo(context, '/account'),
               icon: Stack(
                 clipBehavior: Clip.none,
                 children: [
                   ledger.api.session?['accessToken'] is String
                       ? ClipOval(
                           child: Image.network(
-                            '${ledger.api.baseUrl}/api/v1/account/photo',
+                            '${ledger.api.baseUrl}${ledger.api.session?['user']?['image'] ?? '/api/v1/account/photo'}',
                             width: 30,
                             height: 30,
                             fit: BoxFit.cover,
@@ -1356,6 +1422,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
       body: RefreshIndicator(
         onRefresh: ledger.sync,
         child: ListView(
+          key: PageStorageKey('fintrack-${widget.screen}'),
           padding: const EdgeInsets.fromLTRB(18, 12, 18, 100),
           children: [
             Row(
@@ -1375,7 +1442,9 @@ class _FinScreenState extends ConsumerState<FinScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        widget.screen == 'account'
+                        widget.screen == 'home'
+                            ? 'Hello, ${ledger.api.session?['user']?['name'] ?? 'there'}.'
+                            : widget.screen == 'account'
                             ? 'My account'
                             : titles[index < 0 ? 0 : index],
                         style: Theme.of(context).textTheme.headlineMedium
@@ -1387,7 +1456,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
                     ],
                   ),
                 ),
-                if (widget.screen != 'account')
+                if (widget.screen == 'plans')
                   FilledButton.tonalIcon(
                     onPressed: () => editRecord(
                       context,
@@ -1407,7 +1476,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
               children: [
                 _headerChip(
                   Icons.calendar_month_outlined,
-                  '${totals['period']['start']} – ${totals['period']['end']}',
+                  '${totals['period']['start']} – ${addDays(totals['period']['end'], -1)}',
                 ),
               ],
             ),
@@ -1415,7 +1484,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
             ...sections.expand((w) => [w, const SizedBox(height: 16)]),
             const Center(
               child: Text(
-                'FinTrack v1.1.2 · Developed by Eucodes',
+                'FinTrack v1.2.0 · Developed by Eucodes',
                 style: TextStyle(fontSize: 12, color: Color(0xff657672)),
               ),
             ),
@@ -1423,13 +1492,14 @@ class _FinScreenState extends ConsumerState<FinScreen>
         ),
       ),
       floatingActionButton:
-          ['home', 'transactions', 'plans'].contains(widget.screen)
+          ['home', 'transactions', 'plans', 'reports'].contains(widget.screen)
           ? FloatingActionButton(
+              shape: const CircleBorder(),
               backgroundColor: const Color(0xffffe03d),
               foregroundColor: const Color(0xff073b3b),
               tooltip: 'Add transaction',
               onPressed: () => editRecord(context, ledger, 'transaction'),
-              child: const Icon(Icons.add_rounded),
+              child: const FinIcon('plus'),
             )
           : null,
       bottomNavigationBar: widget.screen == 'account'
@@ -1460,37 +1530,206 @@ class _FinScreenState extends ConsumerState<FinScreen>
                 ),
               ),
             )
-          : NavigationBar(
-              selectedIndex: index < 0 ? 0 : index,
-              onDestinationSelected: (i) => context.go(routes[i]),
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: 'Home',
+          : SafeArea(
+              top: false,
+              minimum: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: NavigationBar(
+                  selectedIndex: index < 0 ? 0 : index,
+                  onDestinationSelected: (i) => navigateTo(context, routes[i]),
+                  destinations: const [
+                    NavigationDestination(
+                      icon: FinIcon('home'),
+                      selectedIcon: FinIcon('home', color: Color(0xffffffff)),
+                      label: 'Home',
+                    ),
+                    NavigationDestination(
+                      icon: FinIcon('plans'),
+                      selectedIcon: FinIcon('plans', color: Color(0xffffffff)),
+                      label: 'Plans',
+                    ),
+                    NavigationDestination(
+                      icon: FinIcon('activity'),
+                      selectedIcon: FinIcon(
+                        'activity',
+                        color: Color(0xffffffff),
+                      ),
+                      label: 'Activity',
+                    ),
+                    NavigationDestination(
+                      icon: FinIcon('reports'),
+                      selectedIcon: FinIcon(
+                        'reports',
+                        color: Color(0xffffffff),
+                      ),
+                      label: 'Reports',
+                    ),
+                    NavigationDestination(
+                      icon: FinIcon('settings'),
+                      selectedIcon: FinIcon(
+                        'settings',
+                        color: Color(0xffffffff),
+                      ),
+                      label: 'Settings',
+                    ),
+                  ],
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.event_note_outlined),
-                  selectedIcon: Icon(Icons.event_note_rounded),
-                  label: 'Plans',
+              ),
+            ),
+    );
+  }
+
+  Widget quickActions(Ledger ledger) => Row(
+    children: [
+      for (final entry in [
+        ('expense', 'Expense'),
+        ('income', 'Income'),
+        ('plans', 'Plans'),
+        ('reports', 'Reports'),
+      ])
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Material(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  if (entry.$1 == 'expense' || entry.$1 == 'income') {
+                    editRecord(
+                      context,
+                      ledger,
+                      'transaction',
+                      initial: Doc(const Uuid().v4(), 'transaction', {
+                        'type': entry.$1,
+                        'amount': 0,
+                        'date': todayIndia(),
+                        'description': '',
+                        'categoryId': '',
+                        'paymentMethodId':
+                            ledger.active
+                                .where((r) => r.kind == 'paymentMethod')
+                                .firstOrNull
+                                ?.id ??
+                            '',
+                      }),
+                    );
+                  } else {
+                    navigateTo(context, '/${entry.$1}');
+                  }
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Column(
+                    children: [
+                      FinIcon(entry.$1),
+                      const SizedBox(height: 8),
+                      Text(entry.$2, style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.swap_horiz),
-                  selectedIcon: Icon(Icons.swap_horiz_rounded),
-                  label: 'Activity',
+              ),
+            ),
+          ),
+        ),
+    ],
+  );
+  Widget transactionRow(Ledger ledger, Doc t, {bool editable = false}) {
+    final category = ledger.active
+        .where((r) => r.id == text(t.data, 'categoryId'))
+        .firstOrNull;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: categoryColor(
+                    ledger.active,
+                    text(t.data, 'categoryId'),
+                  ).withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.bar_chart_outlined),
-                  selectedIcon: Icon(Icons.bar_chart_rounded),
-                  label: 'Reports',
+                child: FinIcon(
+                  text(t.data, 'type'),
+                  color: categoryColor(
+                    ledger.active,
+                    text(t.data, 'categoryId'),
+                  ),
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings_rounded),
-                  label: 'Settings',
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      text(t.data, 'description').isEmpty
+                          ? text(category?.data ?? {}, 'name', 'Transaction')
+                          : text(t.data, 'description'),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${text(t.data, 'date')} · ${text(category?.data ?? {}, 'name', 'Category')}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    if (text(t.data, 'occurrenceId').isNotEmpty)
+                      const Text(
+                        'Planned payment',
+                        style: TextStyle(fontSize: 11),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  '${text(t.data, 'type') == 'income' ? '+' : '−'}${rupees(amount(t.data, 'amount'))}',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: text(t.data, 'type') == 'income'
+                        ? const Color(0xff23734c)
+                        : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (editable)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () =>
+                      editRecord(context, ledger, 'transaction', initial: t),
+                  child: const Text('Edit'),
+                ),
+                if (text(t.data, 'occurrenceId').isNotEmpty)
+                  TextButton(
+                    onPressed: () => act(
+                      () => ledger.save([
+                        t.copy(data: {...t.data, 'occurrenceId': null}),
+                      ]),
+                    ),
+                    child: const Text('Unlink'),
+                  ),
+                IconButton(
+                  tooltip: 'Delete transaction',
+                  onPressed: () => act(() => remove(ledger, t)),
+                  icon: const FinIcon('trash'),
                 ),
               ],
             ),
+        ],
+      ),
     );
   }
 
@@ -1501,14 +1740,15 @@ class _FinScreenState extends ConsumerState<FinScreen>
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: colors.outlineVariant.withValues(alpha: .4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: colors.primary),
           const SizedBox(width: 5),
-          Text(label, style: Theme.of(context).textTheme.labelSmall),
+          Flexible(
+            child: Text(label, style: Theme.of(context).textTheme.labelSmall),
+          ),
         ],
       ),
     );
@@ -1549,11 +1789,6 @@ class _LoginScreenState extends State<LoginScreen> {
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: Theme.of(
-                  context,
-                ).colorScheme.outlineVariant.withValues(alpha: .4),
-              ),
             ),
             child: Form(
               key: form,
@@ -1571,9 +1806,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(21),
                       ),
                       child: ClipRRect(
-                borderRadius: BorderRadius.circular(11),
-                child: Image.asset('assets/fintrack-icon.png', fit: BoxFit.cover),
-              ),
+                        borderRadius: BorderRadius.circular(11),
+                        child: Image.asset(
+                          'assets/fintrack-icon.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

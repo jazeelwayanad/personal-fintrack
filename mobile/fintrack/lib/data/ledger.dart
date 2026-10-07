@@ -17,6 +17,7 @@ class Ledger extends ChangeNotifier {
   Future<void>? _syncing;
   Timer? _timer;
   Ledger(this.api);
+  void notifyAccountChanged() => notifyListeners();
   bool get signedIn => api.session != null;
   List<Doc> get active => records.where((r) => !r.deleted).toList();
   Future<void> initialize() async {
@@ -81,6 +82,16 @@ class Ledger extends ChangeNotifier {
   }
 
   Future<void> save(List<Doc> docs, {bool autoSync = true}) async {
+    if (docs.length > 500) {
+      for (var i = 0; i < docs.length; i += 400) {
+        await save(
+          docs.sublist(i, i + 400 > docs.length ? docs.length : i + 400),
+          autoSync: false,
+        );
+      }
+      if (autoSync) unawaited(sync());
+      return;
+    }
     final changes = <Data>[];
     for (final d in docs) {
       final old = records.where((r) => r.id == d.id).firstOrNull;

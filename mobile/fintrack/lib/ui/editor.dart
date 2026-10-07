@@ -163,6 +163,9 @@ class _RecordEditorState extends State<RecordEditor> {
           if (key == 'payday' && (n < 1 || n > 31 || n % 1 != 0)) {
             return 'Use a day from 1 to 31';
           }
+          if (key == 'intervalDays' && (n < 1 || n > 3650 || n % 1 != 0)) {
+            return 'Use a whole number from 1 to 3650';
+          }
           if (money && widget.kind != 'adjustment' && n < 0) {
             return 'Cannot be negative';
           }
@@ -191,7 +194,9 @@ class _RecordEditorState extends State<RecordEditor> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: DropdownButtonFormField<String>(
-        key: ValueKey('$key-${text(data, 'type')}'),
+        key: ValueKey(
+          '$key-${text(data, 'type')}-${key == 'recurrence' ? text(data, 'planType') : ''}',
+        ),
         initialValue: selected,
         isExpanded: true,
         decoration: InputDecoration(labelText: label),
@@ -199,17 +204,89 @@ class _RecordEditorState extends State<RecordEditor> {
             .map((o) => DropdownMenuItem(value: o.$1, child: Text(o.$2)))
             .toList(),
         validator: (v) => v == null ? 'Choose an option' : null,
-        onChanged: (v) => setState(() {
-          data[key] = v;
-          if (key == 'type') {
-            data['categoryId'] = null;
-            data['planType'] = v == 'income' ? 'income' : 'expense';
-          }
-        }),
+        onChanged:
+            key == 'categoryId' &&
+                (widget.occurrenceId != null ||
+                    text(data, 'occurrenceId').isNotEmpty)
+            ? null
+            : (v) => setState(() {
+                data[key] = v;
+                if (key == 'recurrence' && v == 'custom') {
+                  data['intervalDays'] ??= 28;
+                }
+                if (key == 'planType' && v == 'recharge') {
+                  data['recurrence'] = 'custom';
+                  data['intervalDays'] = 28;
+                }
+                if (key == 'type') {
+                  data['categoryId'] = null;
+                  data['planType'] = v == 'income' ? 'income' : 'expense';
+                }
+              }),
       ),
     );
   }
 
+  Widget colorPicker() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text('Category color'),
+      const SizedBox(height: 10),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final hex in [
+            '#073B3B',
+            '#74AA89',
+            '#8B5CF6',
+            '#2563EB',
+            '#E67E22',
+            '#DB2777',
+            '#DC2626',
+            '#0891B2',
+          ])
+            Semantics(
+              label: 'Choose $hex',
+              selected: text(data, 'color').toUpperCase() == hex,
+              button: true,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: () => setState(() => data['color'] = hex),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Color(int.parse('ff${hex.substring(1)}', radix: 16)),
+                    shape: BoxShape.circle,
+                    border: text(data, 'color').toUpperCase() == hex
+                        ? Border.all(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            width: 3,
+                          )
+                        : null,
+                  ),
+                  child: text(data, 'color').toUpperCase() == hex
+                      ? const Icon(Icons.check, color: Colors.white)
+                      : null,
+                ),
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(height: 14),
+      TextFormField(
+        key: ValueKey('color-${text(data, 'color')}'),
+        initialValue: text(data, 'color'),
+        decoration: const InputDecoration(labelText: 'Custom hex color'),
+        validator: (v) => RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(v ?? '')
+            ? null
+            : 'Use # and six hexadecimal digits',
+        onChanged: (v) => data['color'] = v,
+      ),
+      const SizedBox(height: 14),
+    ],
+  );
   Widget date(String key, String label, {bool optional = false}) => Padding(
     padding: const EdgeInsets.only(bottom: 14),
     child: Row(
@@ -297,6 +374,13 @@ class _RecordEditorState extends State<RecordEditor> {
       final docs = kind == 'plan' && widget.initial != null
           ? snapshotPast(ledger.records, id, todayIndia())
           : <Doc>[];
+      if (kind == 'plan' && text(data, 'planType') == 'recharge') {
+        data['recurrence'] = 'custom';
+      }
+      if (kind == 'category' &&
+          !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(text(data, 'color'))) {
+        throw Exception('Choose a valid category color');
+      }
       docs.add(Doc(id, kind, Map.of(data)));
       if (kind == 'plan' && text(data, 'planType') == 'salary') {
         final pref = ledger.active
@@ -356,205 +440,244 @@ class _RecordEditorState extends State<RecordEditor> {
       amount(data, 'amount'),
       text(data, 'categoryId'),
     );
-    final title =
-        '${isExisting ? 'Edit' : 'Add'} ${kind == 'paymentMethod' ? 'payment method' : kind}';
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 480,
-          maxHeight:
-              MediaQuery.sizeOf(context).height -
-              MediaQuery.viewInsetsOf(context).bottom -
-              48,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.primaryContainer,
-                    child: Icon(
-                      kind == 'transaction'
-                          ? Icons.swap_horiz_rounded
-                          : Icons.edit_note_rounded,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
+    final title = widget.occurrenceId != null
+        ? 'Record payment'
+        : '${isExisting ? 'Edit' : 'Add'} ${kind == 'paymentMethod' ? 'payment method' : kind}';
+    return PopScope(
+      canPop: !busy,
+      child: Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 480,
+            maxHeight:
+                MediaQuery.sizeOf(context).height -
+                MediaQuery.viewInsetsOf(context).bottom -
+                48,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer,
+                      child: Icon(
+                        kind == 'transaction'
+                            ? Icons.swap_horiz_rounded
+                            : Icons.edit_note_rounded,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: 'Close',
-                    onPressed: busy ? null : () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Form(
-                    key: form,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if ([
-                          'category',
-                          'paymentMethod',
-                          'plan',
-                        ].contains(kind))
-                          field('name', 'Name'),
-                        if (['transaction', 'category', 'plan'].contains(kind))
-                          select('type', 'Type', [
-                            ('income', 'Income'),
-                            ('expense', 'Expense'),
-                          ]),
-                        if (kind == 'plan')
-                          select(
-                            'planType',
-                            'Plan type',
-                            (text(data, 'type') == 'income'
-                                    ? ['salary', 'income']
-                                    : ['emi', 'subscription', 'expense'])
-                                .map((v) => (v, v == 'emi' ? 'EMI' : v))
-                                .toList(),
-                          ),
-                        if ([
-                          'transaction',
-                          'plan',
-                          'budget',
-                          'adjustment',
-                        ].contains(kind))
-                          field('amount', 'Amount (₹)', money: true),
-                        if (['transaction', 'plan', 'budget'].contains(kind))
-                          select(
-                            'categoryId',
-                            'Category',
-                            categories
-                                .map((r) => (r.id, text(r.data, 'name')))
-                                .toList(),
-                          ),
-                        if (kind == 'transaction')
-                          select(
-                            'paymentMethodId',
-                            'Payment method',
-                            methods
-                                .map((r) => (r.id, text(r.data, 'name')))
-                                .toList(),
-                          ),
-                        if (['transaction', 'adjustment'].contains(kind))
-                          date('date', 'Date'),
-                        if (['transaction', 'adjustment'].contains(kind))
-                          field('description', 'Note', required: false),
-                        if (kind == 'plan') ...[
-                          date('startDate', 'First due date / payday'),
-                          date(
-                            'endDate',
-                            'Final payment date (optional)',
-                            optional: true,
-                          ),
-                          select('recurrence', 'Repeat', [
-                            ('once', 'One time'),
-                            ('monthly', 'Monthly'),
-                            ('yearly', 'Yearly'),
-                          ]),
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('Payment reminders'),
-                            value: data['reminders'] != false,
-                            onChanged: (v) =>
-                                setState(() => data['reminders'] = v),
-                          ),
-                        ],
-                        if (kind == 'preferences') ...[
-                          field(
-                            'payday',
-                            'Monthly payday (1–31)',
-                            integer: true,
-                          ),
-                          field(
-                            'savings',
-                            'Protected savings / emergency money (₹)',
-                            money: true,
-                          ),
-                          select('limitMode', 'Over-limit behavior', [
-                            ('warn', 'Warn and allow confirmation'),
-                            ('block', 'Block planned spending'),
-                          ]),
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('Daily reminders'),
-                            value: data['notifications'] != false,
-                            onChanged: (v) =>
-                                setState(() => data['notifications'] = v),
-                          ),
-                        ],
-                        if (expense) ...[
-                          Text(
-                            'Available: ${rupees(amount(check, 'maximum'))}',
-                          ),
-                          if (amount(check, 'shortfall') > 0)
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Close',
+                      onPressed: busy ? null : () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Form(
+                      key: form,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if ([
+                            'category',
+                            'paymentMethod',
+                            'plan',
+                          ].contains(kind))
+                            field('name', 'Name'),
+                          if ([
+                                'transaction',
+                                'category',
+                                'plan',
+                              ].contains(kind) &&
+                              widget.occurrenceId == null &&
+                              text(data, 'occurrenceId').isEmpty)
+                            select('type', 'Type', [
+                              ('income', 'Income'),
+                              ('expense', 'Expense'),
+                            ]),
+                          if (kind == 'plan')
+                            select(
+                              'planType',
+                              'Plan type',
+                              (text(data, 'type') == 'income'
+                                      ? ['salary', 'income']
+                                      : [
+                                          'emi',
+                                          'subscription',
+                                          'expense',
+                                          'recharge',
+                                        ])
+                                  .map((v) => (v, v == 'emi' ? 'EMI' : v))
+                                  .toList(),
+                            ),
+                          if ([
+                            'transaction',
+                            'plan',
+                            'budget',
+                            'adjustment',
+                          ].contains(kind))
+                            field('amount', 'Amount (₹)', money: true),
+                          if (['transaction', 'plan', 'budget'].contains(kind))
+                            select(
+                              'categoryId',
+                              'Category',
+                              categories
+                                  .map((r) => (r.id, text(r.data, 'name')))
+                                  .toList(),
+                            ),
+                          if (kind == 'transaction')
+                            select(
+                              'paymentMethodId',
+                              'Payment method',
+                              methods
+                                  .map((r) => (r.id, text(r.data, 'name')))
+                                  .toList(),
+                            ),
+                          if (['transaction', 'adjustment'].contains(kind))
+                            date('date', 'Date'),
+                          if (['transaction', 'adjustment'].contains(kind))
+                            field('description', 'Note', required: false),
+                          if (kind == 'category') colorPicker(),
+                          if (kind == 'plan') ...[
+                            date('startDate', 'First due date / payday'),
+                            date(
+                              'endDate',
+                              'Final payment date (optional)',
+                              optional: true,
+                            ),
+                            select(
+                              'recurrence',
+                              'Repeat',
+                              text(data, 'planType') == 'recharge'
+                                  ? [('custom', 'Validity in days')]
+                                  : [
+                                      ('once', 'One time'),
+                                      ('weekly', 'Weekly'),
+                                      ('custom', 'Custom days'),
+                                      ('monthly', 'Monthly'),
+                                      ('yearly', 'Yearly'),
+                                    ],
+                            ),
+                            if (text(data, 'recurrence') == 'custom')
+                              field(
+                                'intervalDays',
+                                text(data, 'planType') == 'recharge'
+                                    ? 'Validity (days)'
+                                    : 'Repeat every (days)',
+                                integer: true,
+                              ),
+                            if (text(data, 'planType') == 'recharge')
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 14),
+                                child: Text(
+                                  'Validity starts from the actual payment date. Missed recharges do not accumulate as bills.',
+                                ),
+                              ),
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Payment reminders'),
+                              value: data['reminders'] != false,
+                              onChanged: (v) =>
+                                  setState(() => data['reminders'] = v),
+                            ),
+                          ],
+                          if (kind == 'preferences') ...[
+                            field(
+                              'payday',
+                              'Monthly payday (1–31)',
+                              integer: true,
+                            ),
+                            field(
+                              'savings',
+                              'Protected savings / emergency money (₹)',
+                              money: true,
+                            ),
+                            select('limitMode', 'Over-limit behavior', [
+                              ('warn', 'Warn and allow confirmation'),
+                              ('block', 'Block planned spending'),
+                            ]),
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Daily reminders'),
+                              value: data['notifications'] != false,
+                              onChanged: (v) =>
+                                  setState(() => data['notifications'] = v),
+                            ),
+                          ],
+                          if (expense) ...[
                             Text(
-                              'Shortfall: ${rupees(amount(check, 'shortfall'))}',
+                              'Available: ${rupees(amount(check, 'maximum'))}',
+                            ),
+                            if (amount(check, 'shortfall') > 0)
+                              Text(
+                                'Shortfall: ${rupees(amount(check, 'shortfall'))}',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                            CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Already spent'),
+                              subtitle: const Text(
+                                'Record an actual expense even when over limit',
+                              ),
+                              value: alreadySpent,
+                              onChanged: (v) =>
+                                  setState(() => alreadySpent = v ?? false),
+                            ),
+                          ],
+                          if (error != null)
+                            Text(
+                              error!,
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.error,
                               ),
                             ),
-                          CheckboxListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('Already spent'),
-                            subtitle: const Text(
-                              'Record an actual expense even when over limit',
-                            ),
-                            value: alreadySpent,
-                            onChanged: (v) =>
-                                setState(() => alreadySpent = v ?? false),
-                          ),
                         ],
-                        if (error != null)
-                          Text(
-                            error!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: busy ? null : () => Navigator.pop(context),
-                      child: const Text('Cancel'),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: busy ? null : () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: busy ? null : save,
-                      child: Text(busy ? 'Saving…' : 'Save'),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: busy ? null : save,
+                        child: Text(busy ? 'Saving…' : 'Save'),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

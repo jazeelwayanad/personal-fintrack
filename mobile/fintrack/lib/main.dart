@@ -23,16 +23,25 @@ final router = GoRouter(
         key: state.pageKey,
         child: const FinScreen(screen: 'home'),
       ),
-    ),
-    GoRoute(
-      path: '/:screen',
-      pageBuilder: (context, state) => NoTransitionPage<void>(
-        key: state.pageKey,
-        child: FinScreen(
-          screen: state.pathParameters['screen'] ?? 'home',
-          occurrenceId: state.uri.queryParameters['occurrence'],
-        ),
-      ),
+      routes: [
+        for (final screen in [
+          'plans',
+          'transactions',
+          'reports',
+          'settings',
+          'account',
+        ])
+          GoRoute(
+            path: screen,
+            pageBuilder: (context, state) => NoTransitionPage<void>(
+              key: state.pageKey,
+              child: FinScreen(
+                screen: screen,
+                occurrenceId: state.uri.queryParameters['occurrence'],
+              ),
+            ),
+          ),
+      ],
     ),
   ],
 );
@@ -54,23 +63,29 @@ class FinTrackApp extends ConsumerWidget {
                 ? const Color(0xff34483e)
                 : const Color(0xffe6f4e9),
             onPrimaryContainer: dark ? Colors.white : const Color(0xff17372a),
+            surface: dark ? const Color(0xff1c3535) : Colors.white,
+            onSurface: dark ? const Color(0xffedf4ef) : const Color(0xff073b3b),
+            onSurfaceVariant: dark
+                ? const Color(0xffafc1b5)
+                : const Color(0xff5c6d6a),
           );
       return ThemeData(
         useMaterial3: true,
+        fontFamily: 'Outfit',
         colorScheme: colors,
         scaffoldBackgroundColor: dark
-            ? const Color(0xff141c19)
+            ? const Color(0xff142929)
             : const Color(0xfff7f7f0),
         appBarTheme: AppBarTheme(
           backgroundColor: dark
-              ? const Color(0xff141c19)
+              ? const Color(0xff142929)
               : const Color(0xfff7f7f0),
           elevation: 0,
           scrolledUnderElevation: 0,
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: dark ? const Color(0xff25332c) : const Color(0xfff8faf8),
+          fillColor: dark ? const Color(0xff25332c) : const Color(0xfff0f2e9),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
@@ -84,7 +99,14 @@ class FinTrackApp extends ConsumerWidget {
             borderSide: BorderSide.none,
           ),
         ),
-        cardTheme: const CardThemeData(margin: EdgeInsets.zero, elevation: 0),
+        cardTheme: CardThemeData(
+          margin: EdgeInsets.zero,
+          elevation: 0,
+          color: dark ? const Color(0xff1e2a24) : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+        ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             minimumSize: const Size(0, 48),
@@ -96,7 +118,7 @@ class FinTrackApp extends ConsumerWidget {
         ),
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: dark ? const Color(0xff1e2a24) : Colors.white,
-          indicatorColor: colors.primaryContainer,
+          indicatorColor: colors.primary,
           elevation: 0,
           height: 74,
           labelTextStyle: WidgetStatePropertyAll(

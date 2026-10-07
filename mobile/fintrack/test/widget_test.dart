@@ -6,8 +6,29 @@ import 'package:fintrack/data/ledger.dart';
 import 'package:fintrack/main.dart';
 import 'package:fintrack/ui/editor.dart';
 import 'package:fintrack/ui/screens.dart';
+import 'package:fintrack/domain/finance.dart';
+
+class ProfileApi extends CloudApi {
+  @override
+  Future<Data> request(
+    String path, {
+    String method = 'GET',
+    Data? body,
+  }) async => {
+    'name': 'FinTrack Tester',
+    'email': 'tester@example.com',
+    'phone': '',
+    'image': null,
+    'photoUploadEnabled': false,
+  };
+  @override
+  Future<void> updateUser(Data profile) async {}
+}
 
 void main() {
+  setUp(() {
+    router.go('/');
+  });
   testWidgets('login validates input and offers registration', (tester) async {
     final ledger = Ledger(CloudApi());
     await tester.pumpWidget(MaterialApp(home: LoginScreen(ledger: ledger)));
@@ -23,7 +44,7 @@ void main() {
     ledger.dispose();
   });
 
-  testWidgets('bottom tabs switch without stacking an animated page', (
+  testWidgets('tabs preserve history and system Back returns to Home', (
     tester,
   ) async {
     final api = CloudApi()
@@ -44,12 +65,23 @@ void main() {
     await tester.pump();
     expect(find.byType(FinScreen), findsOneWidget);
     expect(find.text('Scheduled income and expenses'), findsOneWidget);
+    await tester.tap(find.text('Plans').last);
+    await tester.pump();
+    await tester.tap(find.text('Activity').last);
+    await tester.pump();
+    expect(find.text('Your ledger'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.text('Scheduled income and expenses'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.text('Hello, there.'), findsOneWidget);
   });
 
   testWidgets('account icon opens profile with sign out at the end', (
     tester,
   ) async {
-    final api = CloudApi()
+    final api = ProfileApi()
       ..session = {
         'user': {
           'id': 'account-test',
@@ -65,13 +97,13 @@ void main() {
       ),
     );
     await tester.tap(find.byTooltip('My account'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('My account'), findsOneWidget);
     expect(find.text('FinTrack Tester'), findsOneWidget);
     expect(find.text('tester@example.com'), findsOneWidget);
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
-    await tester.tap(find.byTooltip('Back to home'));
+    await tester.tap(find.byTooltip('Back'));
     await tester.pump();
   });
 
@@ -87,16 +119,46 @@ void main() {
         'user': {'id': 'layout-test'},
       };
     final ledger = Ledger(api)..loading = false;
+    ledger.records = [
+      Doc('category', 'category', {
+        'name': 'Internet and subscriptions',
+        'type': 'expense',
+        'color': '#2563EB',
+      }),
+      Doc('monthly', 'plan', {
+        'name': 'Monthly broadband',
+        'type': 'expense',
+        'planType': 'expense',
+        'categoryId': 'category',
+        'amount': 100000,
+        'startDate': todayIndia(),
+        'recurrence': 'monthly',
+        'reminders': false,
+      }),
+      Doc('budget:category', 'budget', {
+        'categoryId': 'category',
+        'amount': 200000,
+      }),
+    ];
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [ledgerProvider.overrideWith((ref) => ledger)],
         child: const FinTrackApp(),
       ),
     );
-    for (final tab in ['Plans', 'Activity', 'Reports', 'Settings', 'Home']) {
-      await tester.tap(find.text(tab).last);
-      await tester.pump();
-      expect(tester.takeException(), isNull, reason: '$tab overflowed');
+    for (final width in [360.0, 390.0, 430.0, 768.0]) {
+      tester.view.physicalSize = Size(width, 720);
+      for (final tab in ['Plans', 'Activity', 'Reports', 'Settings', 'Home']) {
+        await tester.tap(find.text(tab).last);
+        await tester.pump();
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: '$tab overflowed at $width',
+        );
+      }
     }
   });
 
@@ -134,11 +196,13 @@ void main() {
   });
 
   testWidgets('record editor fits a narrow Android screen', (tester) async {
-    tester.view.physicalSize = const Size(360, 720);
+    tester.view.physicalSize = const Size(360, 600);
     tester.view.devicePixelRatio = 1;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 260);
     addTearDown(() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
+      tester.view.resetViewInsets();
     });
     final ledger = Ledger(CloudApi());
     await tester.pumpWidget(
@@ -158,6 +222,10 @@ void main() {
     expect(find.text('Add plan'), findsOneWidget);
     expect(find.byType(Dialog), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(Dialog), findsNothing);
+    expect(find.text('Add a plan'), findsOneWidget);
     ledger.dispose();
   });
 }

@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import cases from '../fixtures/finance.json';
-import { checkSpending, cycle, occurrences, reminders, summary } from '../src/lib/finance/engine';
+import oldCases from '../fixtures/finance.json';
+import newCases from '../fixtures/finance-v2.json';
+const cases = [...oldCases, ...newCases];
+import { checkSpending, cycle, occurrences, reminders, summary, monthlyForecast } from '../src/lib/finance/engine';
 import { Document, validateData } from '../src/lib/finance/model';
 describe('shared financial scenarios', () => {
   for (const scenario of cases) it(scenario.name, () => {
     const records = scenario.records as Document[];
     expect(summary(records, scenario.today)).toMatchObject(scenario.expected);
     if (scenario.check) expect(checkSpending(records, scenario.today, scenario.check.amount, scenario.check.categoryId)).toMatchObject({ maximum: scenario.check.maximum, allowed: scenario.check.allowed, shortfall: scenario.check.shortfall });
+    if ('forecast' in scenario && scenario.forecast) expect(monthlyForecast(records,scenario.today,scenario.forecast.month)).toMatchObject({count:scenario.forecast.count,expenses:scenario.forecast.expenses});
     if (scenario.dates) expect(occurrences(records, scenario.today, scenario.through!).map(o => o.data.date)).toEqual(scenario.dates);
   });
   it('clamps payday on short months', () => { expect(cycle('2026-02-28', 31)).toEqual({ start: '2026-02-28', end: '2026-03-31' }); expect(cycle('2026-02-27', 31)).toEqual({ start: '2026-01-31', end: '2026-02-28' }); });

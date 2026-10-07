@@ -22,6 +22,7 @@ export class FinanceStore {
   private notify() { this.listeners.forEach(fn => fn()); }
   async records() { return this.db.documents.toArray(); }
   async save(records: Document[], autoSync = true) {
+    if (records.length > 500) { for (let i=0;i<records.length;i+=400) await this.save(records.slice(i,i+400),false); if(autoSync) void this.sync(); return; }
     const mutation: Mutation = { id: crypto.randomUUID(), changes: [] };
     await this.db.transaction('rw', this.db.documents, this.db.pending, async () => {
       for (const record of records) {
@@ -82,7 +83,7 @@ export class FinanceStore {
         const pending = await this.db.pending.orderBy('sequence').first();
         if (!pending) break;
         if (pending.conflict || pending.error) { this.status = 'Review a sync conflict in Settings'; return; }
-        const response = await this.request('/api/v1/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pending.mutation) });
+        const response = await this.request('/api/v1/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-FinTrack-Finance-Version':'2' }, body: JSON.stringify(pending.mutation) });
         const result = await response.json();
         if (!response.ok) {
           if (response.status === 400 || response.status === 409) { await this.db.pending.update(pending.sequence!, { error: result.error, conflict: result.records ?? [] }); }
@@ -105,7 +106,7 @@ export class FinanceStore {
         });
       }
       const cursor = (await this.db.meta.get('cursor'))?.value ?? 0;
-      const response = await this.request(`/api/v1/sync?since=${cursor}`);
+      const response = await this.request(`/api/v1/sync?since=${cursor}`, { headers: { 'X-FinTrack-Finance-Version':'2' } });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? 'Sync failed');
       await this.db.transaction('rw', this.db.documents, this.db.pending, this.db.meta, async () => {

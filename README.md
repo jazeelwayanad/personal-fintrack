@@ -10,10 +10,9 @@ and budgets --- all from one clean dashboard. Available on **Web** and
 
 🌐 **Web App:** [fintrack.eucodes.tech](https://fintrack.eucodes.tech)
 
-📱 **Android APK:** [Download APK](YOUR_APK_DOWNLOAD_URL)
+📱 **Android APK:** [Download APK](https://github.com/jazeelwayanad/personal-fintrack/releases/latest)
 
-> Replace `YOUR_APK_DOWNLOAD_URL` with your APK download link before
-> publishing.
+FinTrack 1.2.0 uses Android build 7 and finance capability 2.
 
 ## ✨ Features
 

@@ -112,7 +112,7 @@ export default function AccountPage() {
       </div>
       {profile && !profile.photoUploadEnabled && <p className="mt-2 text-xs text-muted-foreground">Photo uploads will be available once Cloudinary is configured.</p>}
       {photoFailed && <p role="status" className="mt-2 text-xs text-muted-foreground">Your photo could not be loaded. <button type="button" className="underline" onClick={() => setPhotoFailed(false)}>Try again</button></p>}
-      {loading && <p role="status" className="mt-5 text-sm text-muted-foreground">Loading account details…</p>}
+      {loading && <div role="status" className="mt-5 flex items-center justify-center gap-3 text-sm text-muted-foreground"><img src="/icons/icon-192.png" alt="" width={40} height={40} className="rounded-xl"/><span>Loading account details…</span></div>}
       {error && !editing && <div role="alert" className="mt-4 rounded-2xl bg-destructive/10 p-3 text-sm text-destructive">{error}{!profile && <button type="button" className="ml-2 underline" onClick={() => { setLoading(true); setError(''); void load(); }}>Try again</button>}</div>}
       {profile && !editing && <div className="fin-panel mt-7 p-2" aria-label="Contact details">
         <button type="button" onClick={() => startEdit('phone')} aria-label="Edit phone number" className="flex min-h-20 w-full items-center gap-4 rounded-[20px] px-4 py-4 text-left hover:bg-muted/60">

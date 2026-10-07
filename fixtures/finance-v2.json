@@ -1,0 +1,1189 @@
+[
+  {
+    "name": "inclusive internet budget reserves plans once",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "opening",
+        "kind": "adjustment",
+        "data": {
+          "amount": 500000,
+          "date": "2026-10-01"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "broadband",
+        "kind": "plan",
+        "data": {
+          "name": "broadband",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 100000,
+          "categoryId": "internet",
+          "startDate": "2026-10-01",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "mobile",
+        "kind": "plan",
+        "data": {
+          "name": "mobile",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 50000,
+          "categoryId": "internet",
+          "startDate": "2026-10-01",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:internet",
+        "kind": "budget",
+        "data": {
+          "categoryId": "internet",
+          "amount": 200000
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "commitments": 150000,
+      "reservedBudgets": 50000,
+      "unallocated": 300000,
+      "budgets": [
+        {
+          "id": "budget:internet",
+          "categoryId": "internet",
+          "amount": 200000,
+          "manual": 200000,
+          "source": "manual",
+          "planned": 150000,
+          "spent": 0,
+          "remaining": 200000,
+          "outstanding": 150000,
+          "reserve": 50000
+        }
+      ]
+    },
+    "check": {
+      "amount": 50000,
+      "categoryId": "internet",
+      "maximum": 50000,
+      "allowed": true,
+      "shortfall": 0
+    }
+  },
+  {
+    "name": "linked payment consumes category budget and releases bill",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "opening",
+        "kind": "adjustment",
+        "data": {
+          "amount": 500000,
+          "date": "2026-10-01"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "broadband",
+        "kind": "plan",
+        "data": {
+          "name": "broadband",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 100000,
+          "categoryId": "internet",
+          "startDate": "2026-10-01",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "mobile",
+        "kind": "plan",
+        "data": {
+          "name": "mobile",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 50000,
+          "categoryId": "internet",
+          "startDate": "2026-10-01",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:internet",
+        "kind": "budget",
+        "data": {
+          "categoryId": "internet",
+          "amount": 200000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "broadband:2026-10-01",
+        "kind": "occurrence",
+        "data": {
+          "planId": "broadband",
+          "name": "broadband",
+          "type": "expense",
+          "amount": 100000,
+          "categoryId": "internet",
+          "date": "2026-10-01",
+          "reminders": true,
+          "status": "pending"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "paid",
+        "kind": "transaction",
+        "data": {
+          "type": "expense",
+          "amount": 100000,
+          "categoryId": "internet",
+          "paymentMethodId": "bank",
+          "date": "2026-10-05",
+          "description": "",
+          "occurrenceId": "broadband:2026-10-01"
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "commitments": 50000,
+      "reservedBudgets": 50000,
+      "balance": 400000,
+      "unallocated": 300000,
+      "budgets": [
+        {
+          "id": "budget:internet",
+          "categoryId": "internet",
+          "amount": 200000,
+          "manual": 200000,
+          "source": "manual",
+          "planned": 150000,
+          "spent": 100000,
+          "remaining": 100000,
+          "outstanding": 50000,
+          "reserve": 50000
+        }
+      ]
+    }
+  },
+  {
+    "name": "plans automatically create category budget",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "opening",
+        "kind": "adjustment",
+        "data": {
+          "amount": 500000,
+          "date": "2026-10-01"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "broadband",
+        "kind": "plan",
+        "data": {
+          "name": "broadband",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 100000,
+          "categoryId": "internet",
+          "startDate": "2026-10-01",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "mobile",
+        "kind": "plan",
+        "data": {
+          "name": "mobile",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 50000,
+          "categoryId": "internet",
+          "startDate": "2026-10-01",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "commitments": 150000,
+      "reservedBudgets": 0,
+      "unallocated": 350000,
+      "budgets": [
+        {
+          "id": "budget:internet",
+          "categoryId": "internet",
+          "amount": 150000,
+          "manual": null,
+          "source": "plans",
+          "planned": 150000,
+          "spent": 0,
+          "remaining": 150000,
+          "outstanding": 150000,
+          "reserve": 0
+        }
+      ]
+    }
+  },
+  {
+    "name": "manual below plan total expands without double counting",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "opening",
+        "kind": "adjustment",
+        "data": {
+          "amount": 500000,
+          "date": "2026-10-01"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "broadband",
+        "kind": "plan",
+        "data": {
+          "name": "broadband",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 100000,
+          "categoryId": "internet",
+          "startDate": "2026-10-01",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "mobile",
+        "kind": "plan",
+        "data": {
+          "name": "mobile",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 50000,
+          "categoryId": "internet",
+          "startDate": "2026-10-01",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:internet",
+        "kind": "budget",
+        "data": {
+          "categoryId": "internet",
+          "amount": 100000
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "commitments": 150000,
+      "reservedBudgets": 0,
+      "unallocated": 350000,
+      "budgets": [
+        {
+          "id": "budget:internet",
+          "categoryId": "internet",
+          "amount": 150000,
+          "manual": 100000,
+          "source": "manual",
+          "planned": 150000,
+          "spent": 0,
+          "remaining": 150000,
+          "outstanding": 150000,
+          "reserve": 0
+        }
+      ]
+    }
+  },
+  {
+    "name": "unlinked expense does not mark plan paid",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "opening",
+        "kind": "adjustment",
+        "data": {
+          "amount": 500000,
+          "date": "2026-10-01"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "broadband",
+        "kind": "plan",
+        "data": {
+          "name": "broadband",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 100000,
+          "categoryId": "internet",
+          "startDate": "2026-10-01",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "mobile",
+        "kind": "plan",
+        "data": {
+          "name": "mobile",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 50000,
+          "categoryId": "internet",
+          "startDate": "2026-10-01",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:internet",
+        "kind": "budget",
+        "data": {
+          "categoryId": "internet",
+          "amount": 200000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "broadband:2026-10-01",
+        "kind": "occurrence",
+        "data": {
+          "planId": "broadband",
+          "name": "broadband",
+          "type": "expense",
+          "amount": 100000,
+          "categoryId": "internet",
+          "date": "2026-10-01",
+          "reminders": true,
+          "status": "pending"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "paid",
+        "kind": "transaction",
+        "data": {
+          "type": "expense",
+          "amount": 100000,
+          "categoryId": "internet",
+          "paymentMethodId": "bank",
+          "date": "2026-10-05",
+          "description": "",
+          "occurrenceId": null
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "commitments": 150000,
+      "reservedBudgets": 0,
+      "unallocated": 250000,
+      "budgets": [
+        {
+          "id": "budget:internet",
+          "categoryId": "internet",
+          "amount": 200000,
+          "manual": 200000,
+          "source": "manual",
+          "planned": 150000,
+          "spent": 100000,
+          "remaining": 100000,
+          "outstanding": 150000,
+          "reserve": 0
+        }
+      ]
+    }
+  },
+  {
+    "name": "skipping frees planned budget reservation",
+    "today": "2026-10-05",
+    "records": [
+      {
+        "id": "opening",
+        "kind": "adjustment",
+        "data": {
+          "amount": 500000,
+          "date": "2026-10-01"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "broadband",
+        "kind": "plan",
+        "data": {
+          "name": "broadband",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 100000,
+          "categoryId": "internet",
+          "startDate": "2026-10-01",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "mobile",
+        "kind": "plan",
+        "data": {
+          "name": "mobile",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 50000,
+          "categoryId": "internet",
+          "startDate": "2026-10-01",
+          "recurrence": "monthly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "budget:internet",
+        "kind": "budget",
+        "data": {
+          "categoryId": "internet",
+          "amount": 200000
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "broadband:2026-10-01",
+        "kind": "occurrence",
+        "data": {
+          "planId": "broadband",
+          "name": "broadband",
+          "type": "expense",
+          "amount": 100000,
+          "categoryId": "internet",
+          "date": "2026-10-01",
+          "reminders": true,
+          "status": "skipped"
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {
+      "commitments": 50000,
+      "reservedBudgets": 150000,
+      "unallocated": 300000,
+      "budgets": [
+        {
+          "id": "budget:internet",
+          "categoryId": "internet",
+          "amount": 200000,
+          "manual": 200000,
+          "source": "manual",
+          "planned": 50000,
+          "spent": 0,
+          "remaining": 200000,
+          "outstanding": 50000,
+          "reserve": 150000
+        }
+      ]
+    }
+  },
+  {
+    "name": "28 day interval contains two January payments",
+    "today": "2026-01-01",
+    "records": [
+      {
+        "id": "days",
+        "kind": "plan",
+        "data": {
+          "name": "days",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "startDate": "2026-01-01",
+          "recurrence": "custom",
+          "reminders": true,
+          "intervalDays": 28
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {},
+    "through": "2026-02-27",
+    "dates": [
+      "2026-01-01",
+      "2026-01-29",
+      "2026-02-26"
+    ],
+    "forecast": {
+      "month": "2026-01",
+      "count": 2,
+      "expenses": 59800
+    }
+  },
+  {
+    "name": "weekly repeats on exact seven day intervals",
+    "today": "2026-02-01",
+    "records": [
+      {
+        "id": "week",
+        "kind": "plan",
+        "data": {
+          "name": "week",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 100,
+          "categoryId": "internet",
+          "startDate": "2026-02-01",
+          "recurrence": "weekly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {},
+    "through": "2026-02-28",
+    "dates": [
+      "2026-02-01",
+      "2026-02-08",
+      "2026-02-15",
+      "2026-02-22"
+    ]
+  },
+  {
+    "name": "late recharge restarts from actual payment date",
+    "today": "2026-01-10",
+    "records": [
+      {
+        "id": "recharge",
+        "kind": "plan",
+        "data": {
+          "name": "recharge",
+          "type": "expense",
+          "planType": "recharge",
+          "amount": 29900,
+          "categoryId": "internet",
+          "startDate": "2026-01-01",
+          "recurrence": "custom",
+          "reminders": true,
+          "intervalDays": 28
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "recharge:2026-01-01",
+        "kind": "occurrence",
+        "data": {
+          "planId": "recharge",
+          "name": "recharge",
+          "type": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "date": "2026-01-01",
+          "reminders": true,
+          "status": "pending"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "recharge-paid",
+        "kind": "transaction",
+        "data": {
+          "type": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "paymentMethodId": "bank",
+          "date": "2026-01-10",
+          "description": "",
+          "occurrenceId": "recharge:2026-01-01"
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {},
+    "through": "2026-04-30",
+    "dates": [
+      "2026-01-01",
+      "2026-02-07",
+      "2026-03-07",
+      "2026-04-04"
+    ]
+  },
+  {
+    "name": "missed recharge keeps one overdue instead of accumulated debts",
+    "today": "2026-03-01",
+    "records": [
+      {
+        "id": "recharge",
+        "kind": "plan",
+        "data": {
+          "name": "recharge",
+          "type": "expense",
+          "planType": "recharge",
+          "amount": 29900,
+          "categoryId": "internet",
+          "startDate": "2026-01-01",
+          "recurrence": "custom",
+          "reminders": true,
+          "intervalDays": 28
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {},
+    "through": "2026-04-30",
+    "dates": [
+      "2026-01-01",
+      "2026-03-29",
+      "2026-04-26"
+    ]
+  },
+  {
+    "name": "84 day validity uses exact dates",
+    "today": "2026-01-01",
+    "records": [
+      {
+        "id": "validity",
+        "kind": "plan",
+        "data": {
+          "name": "validity",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 71900,
+          "categoryId": "internet",
+          "startDate": "2026-01-01",
+          "recurrence": "custom",
+          "reminders": true,
+          "intervalDays": 84
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {},
+    "through": "2026-03-26",
+    "dates": [
+      "2026-01-01",
+      "2026-03-26"
+    ]
+  },
+  {
+    "name": "365 day validity uses exact dates",
+    "today": "2026-01-01",
+    "records": [
+      {
+        "id": "validity",
+        "kind": "plan",
+        "data": {
+          "name": "validity",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 71900,
+          "categoryId": "internet",
+          "startDate": "2026-01-01",
+          "recurrence": "custom",
+          "reminders": true,
+          "intervalDays": 365
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {},
+    "through": "2027-01-01",
+    "dates": [
+      "2026-01-01",
+      "2027-01-01"
+    ]
+  },
+  {
+    "name": "yearly plan has no payment in unbilled month",
+    "today": "2026-01-01",
+    "records": [
+      {
+        "id": "annual",
+        "kind": "plan",
+        "data": {
+          "name": "annual",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 359900,
+          "categoryId": "internet",
+          "startDate": "2026-01-01",
+          "recurrence": "yearly",
+          "reminders": true
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "expected": {},
+    "forecast": {
+      "month": "2026-02",
+      "count": 0,
+      "expenses": 0
+    }
+  },
+  {
+    "name": "early recharge restarts validity",
+    "records": [
+      {
+        "id": "recharge",
+        "kind": "plan",
+        "data": {
+          "name": "recharge",
+          "type": "expense",
+          "planType": "recharge",
+          "amount": 29900,
+          "categoryId": "internet",
+          "startDate": "2026-01-01",
+          "recurrence": "custom",
+          "reminders": true,
+          "intervalDays": 28
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "recharge:2026-01-01",
+        "kind": "occurrence",
+        "data": {
+          "planId": "recharge",
+          "name": "recharge",
+          "type": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "date": "2026-01-01",
+          "reminders": true,
+          "status": "pending"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "recharge-paid",
+        "kind": "transaction",
+        "data": {
+          "type": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "paymentMethodId": "bank",
+          "date": "2025-12-28",
+          "description": "",
+          "occurrenceId": "recharge:2026-01-01"
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "today": "2026-01-10",
+    "through": "2026-02-28",
+    "dates": [
+      "2026-01-01",
+      "2026-01-25",
+      "2026-02-22"
+    ],
+    "expected": {}
+  },
+  {
+    "name": "deleting recharge payment restores a single overdue bill",
+    "records": [
+      {
+        "id": "recharge",
+        "kind": "plan",
+        "data": {
+          "name": "recharge",
+          "type": "expense",
+          "planType": "recharge",
+          "amount": 29900,
+          "categoryId": "internet",
+          "startDate": "2026-01-01",
+          "recurrence": "custom",
+          "reminders": true,
+          "intervalDays": 28
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "recharge:2026-01-01",
+        "kind": "occurrence",
+        "data": {
+          "planId": "recharge",
+          "name": "recharge",
+          "type": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "date": "2026-01-01",
+          "reminders": true,
+          "status": "pending"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "recharge-paid",
+        "kind": "transaction",
+        "data": {
+          "type": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "paymentMethodId": "bank",
+          "date": "2026-01-10",
+          "description": "",
+          "occurrenceId": "recharge:2026-01-01"
+        },
+        "revision": 0,
+        "deleted": true
+      }
+    ],
+    "today": "2026-01-10",
+    "through": "2026-02-28",
+    "dates": [
+      "2026-01-01",
+      "2026-02-07"
+    ],
+    "expected": {}
+  },
+  {
+    "name": "unlinking recharge payment restores its pending occurrence",
+    "records": [
+      {
+        "id": "recharge",
+        "kind": "plan",
+        "data": {
+          "name": "recharge",
+          "type": "expense",
+          "planType": "recharge",
+          "amount": 29900,
+          "categoryId": "internet",
+          "startDate": "2026-01-01",
+          "recurrence": "custom",
+          "reminders": true,
+          "intervalDays": 28
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "recharge:2026-01-01",
+        "kind": "occurrence",
+        "data": {
+          "planId": "recharge",
+          "name": "recharge",
+          "type": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "date": "2026-01-01",
+          "reminders": true,
+          "status": "pending"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "recharge-paid",
+        "kind": "transaction",
+        "data": {
+          "type": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "paymentMethodId": "bank",
+          "date": "2026-01-10",
+          "description": "",
+          "occurrenceId": null
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "today": "2026-01-10",
+    "through": "2026-02-28",
+    "dates": [
+      "2026-01-01",
+      "2026-02-07"
+    ],
+    "expected": {}
+  },
+  {
+    "name": "paused recharge keeps historical payment without future forecasts",
+    "records": [
+      {
+        "id": "recharge",
+        "kind": "plan",
+        "data": {
+          "name": "recharge",
+          "type": "expense",
+          "planType": "recharge",
+          "amount": 29900,
+          "categoryId": "internet",
+          "startDate": "2026-01-01",
+          "recurrence": "custom",
+          "reminders": true,
+          "intervalDays": 28,
+          "pausedAt": "2026-01-11"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "recharge:2026-01-01",
+        "kind": "occurrence",
+        "data": {
+          "planId": "recharge",
+          "name": "recharge",
+          "type": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "date": "2026-01-01",
+          "reminders": true,
+          "status": "pending"
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "recharge-paid",
+        "kind": "transaction",
+        "data": {
+          "type": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "paymentMethodId": "bank",
+          "date": "2026-01-10",
+          "description": "",
+          "occurrenceId": "recharge:2026-01-01"
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "today": "2026-01-15",
+    "through": "2026-03-31",
+    "dates": [
+      "2026-01-01"
+    ],
+    "expected": {},
+    "forecast": {
+      "month": "2026-02",
+      "count": 0,
+      "expenses": 0
+    }
+  },
+  {
+    "name": "custom validity crosses leap day exactly",
+    "records": [
+      {
+        "id": "days",
+        "kind": "plan",
+        "data": {
+          "name": "days",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "startDate": "2028-02-01",
+          "recurrence": "custom",
+          "reminders": true,
+          "intervalDays": 28
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "today": "2028-02-01",
+    "through": "2028-03-31",
+    "dates": [
+      "2028-02-01",
+      "2028-02-29",
+      "2028-03-28"
+    ],
+    "expected": {},
+    "forecast": {
+      "month": "2028-02",
+      "count": 2,
+      "expenses": 59800
+    }
+  },
+  {
+    "name": "completed custom plan stops future dates",
+    "records": [
+      {
+        "id": "days",
+        "kind": "plan",
+        "data": {
+          "name": "days",
+          "type": "expense",
+          "planType": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "startDate": "2026-01-01",
+          "recurrence": "custom",
+          "reminders": true,
+          "intervalDays": 28,
+          "endDate": "2026-01-15"
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "today": "2026-01-10",
+    "through": "2026-03-31",
+    "dates": [
+      "2026-01-01"
+    ],
+    "expected": {},
+    "forecast": {
+      "month": "2026-02",
+      "count": 0,
+      "expenses": 0
+    }
+  },
+  {
+    "name": "skipping overdue recharge advances one validity interval",
+    "records": [
+      {
+        "id": "recharge",
+        "kind": "plan",
+        "data": {
+          "name": "recharge",
+          "type": "expense",
+          "planType": "recharge",
+          "amount": 29900,
+          "categoryId": "internet",
+          "startDate": "2026-01-01",
+          "recurrence": "custom",
+          "reminders": true,
+          "intervalDays": 28
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "recharge:2026-01-01",
+        "kind": "occurrence",
+        "data": {
+          "planId": "recharge",
+          "name": "recharge",
+          "type": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "date": "2026-01-01",
+          "reminders": true,
+          "status": "skipped"
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "today": "2026-01-10",
+    "through": "2026-02-28",
+    "dates": [
+      "2026-01-01",
+      "2026-01-29",
+      "2026-02-26"
+    ],
+    "expected": {}
+  },
+  {
+    "name": "skipping future forecast does not erase oldest overdue recharge",
+    "records": [
+      {
+        "id": "recharge",
+        "kind": "plan",
+        "data": {
+          "name": "recharge",
+          "type": "expense",
+          "planType": "recharge",
+          "amount": 29900,
+          "categoryId": "internet",
+          "startDate": "2026-01-01",
+          "recurrence": "custom",
+          "reminders": true,
+          "intervalDays": 28
+        },
+        "revision": 0,
+        "deleted": false
+      },
+      {
+        "id": "recharge:2026-02-07",
+        "kind": "occurrence",
+        "data": {
+          "planId": "recharge",
+          "name": "recharge",
+          "type": "expense",
+          "amount": 29900,
+          "categoryId": "internet",
+          "date": "2026-02-07",
+          "reminders": true,
+          "status": "skipped"
+        },
+        "revision": 0,
+        "deleted": false
+      }
+    ],
+    "today": "2026-01-10",
+    "through": "2026-02-28",
+    "dates": [
+      "2026-01-01",
+      "2026-02-07"
+    ],
+    "expected": {}
+  }
+]
