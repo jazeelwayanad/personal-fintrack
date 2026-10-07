@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
@@ -20,6 +21,23 @@ class FinScreen extends ConsumerStatefulWidget {
 
 class _FinScreenState extends ConsumerState<FinScreen>
     with WidgetsBindingObserver {
+  Future<void> openDeveloperLink(String url) async {
+    try {
+      await const MethodChannel(
+        'fintrack/external_links',
+      ).invokeMethod('open', url);
+    } on PlatformException {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No app could open this link. Contact info@eucodes.in.',
+            ),
+          ),
+        );
+    }
+  }
+
   String month = todayIndia().substring(0, 7),
       filter = 'all',
       planFilter = 'all',
@@ -903,7 +921,10 @@ class _FinScreenState extends ConsumerState<FinScreen>
         panel('About FinTrack', [
           const Text('Version 1.1.1'),
           const SizedBox(height: 8),
-          const Text('Developed by Eucodes'),
+          TextButton(
+            onPressed: () => openDeveloperLink('https://eucodes.in/'),
+            child: const Text('Developed by Eucodes ↗'),
+          ),
         ]),
       );
       sections.add(
@@ -1101,6 +1122,13 @@ class _FinScreenState extends ConsumerState<FinScreen>
             ],
           ),
         ]),
+        TextButton.icon(
+          onPressed: () => openDeveloperLink(
+            'mailto:info@eucodes.in?subject=FinTrack%20v1.1.1%20feedback',
+          ),
+          icon: const Icon(Icons.chat_bubble_outline_rounded),
+          label: const Text('Give feedback'),
+        ),
       ]);
     }
     return Scaffold(
