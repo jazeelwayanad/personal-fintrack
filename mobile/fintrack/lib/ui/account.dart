@@ -222,10 +222,24 @@ class _AccountScreenState extends State<AccountScreen> {
           : null,
     ),
   );
+  void closeEditor() {
+    setState(() {
+      editing = false;
+      password.clear();
+      if (profile != null) {
+        name.text = text(profile!, 'name');
+        email.text = text(profile!, 'email');
+        phone.text = text(profile!, 'phone');
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: !busy,
-    onPopInvokedWithResult: (didPop, result) {},
+    canPop: !busy && !editing,
+    onPopInvokedWithResult: (didPop, result) {
+      if (!didPop && !busy && editing) closeEditor();
+    },
     child: Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -234,15 +248,7 @@ class _AccountScreenState extends State<AccountScreen> {
               ? null
               : () {
                   if (editing) {
-                    setState(() {
-                      editing = false;
-                      password.clear();
-                      if (profile != null) {
-                        name.text = text(profile!, 'name');
-                        email.text = text(profile!, 'email');
-                        phone.text = text(profile!, 'phone');
-                      }
-                    });
+                    closeEditor();
                   } else {
                     navigateBack(context);
                   }
@@ -435,6 +441,12 @@ class _AccountScreenState extends State<AccountScreen> {
                           ),
                         const SizedBox(height: 24),
                         TextButton.icon(
+                          style: TextButton.styleFrom(
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surface,
+                            minimumSize: const Size.fromHeight(48),
+                          ),
                           onPressed: busy ? null : widget.feedback,
                           icon: const FinIcon('feedback'),
                           label: const Text('Give feedback'),

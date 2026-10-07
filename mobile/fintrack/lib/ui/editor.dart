@@ -134,6 +134,19 @@ class _RecordEditorState extends State<RecordEditor> {
   );
   bool alreadySpent = false, busy = false;
   String? error;
+  final colorController = TextEditingController();
+  @override
+  void initState() {
+    super.initState();
+    colorController.text = text(data, 'color');
+  }
+
+  @override
+  void dispose() {
+    colorController.dispose();
+    super.dispose();
+  }
+
   Widget field(
     String key,
     String label, {
@@ -252,7 +265,10 @@ class _RecordEditorState extends State<RecordEditor> {
               button: true,
               child: InkWell(
                 borderRadius: BorderRadius.circular(24),
-                onTap: () => setState(() => data['color'] = hex),
+                onTap: () => setState(() {
+                  data['color'] = hex;
+                  colorController.text = hex;
+                }),
                 child: Container(
                   width: 48,
                   height: 48,
@@ -276,14 +292,24 @@ class _RecordEditorState extends State<RecordEditor> {
       ),
       const SizedBox(height: 14),
       TextFormField(
-        key: ValueKey('color-${text(data, 'color')}'),
-        initialValue: text(data, 'color'),
+        controller: colorController,
         decoration: const InputDecoration(labelText: 'Custom hex color'),
         validator: (v) => RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(v ?? '')
             ? null
             : 'Use # and six hexadecimal digits',
-        onChanged: (v) => data['color'] = v,
+        onChanged: (v) => setState(() => data['color'] = v),
       ),
+      if (RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(text(data, 'color')))
+        Container(
+          height: 8,
+          margin: const EdgeInsets.only(top: 12),
+          decoration: BoxDecoration(
+            color: Color(
+              int.parse('ff${text(data, 'color').substring(1)}', radix: 16),
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
       const SizedBox(height: 14),
     ],
   );

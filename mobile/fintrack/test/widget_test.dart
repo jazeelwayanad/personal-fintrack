@@ -103,6 +103,12 @@ void main() {
     expect(find.text('tester@example.com'), findsOneWidget);
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
+    await tester.tap(find.byTooltip('Edit profile'));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit profile'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('My account'), findsOneWidget);
     await tester.tap(find.byTooltip('Back'));
     await tester.pump();
   });
