@@ -1133,22 +1133,70 @@ class _FinScreenState extends ConsumerState<FinScreen>
               ),
             ),
             const SizedBox(width: 10),
-            const Text(
-              'FinTrack',
-              style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: -.5),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'FinTrack',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -.5,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
           IconButton(
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
             onPressed: () => ledger.sync(),
-            icon: const Icon(Icons.sync),
-            tooltip: 'Sync now',
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.sync),
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: ledger.status == 'Synced'
+                          ? Colors.green
+                          : ledger.status == 'Syncing'
+                          ? Colors.amber
+                          : Colors.red,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            tooltip: 'Sync now · ${ledger.status}',
           ),
           if (widget.screen != 'account')
             IconButton(
               onPressed: () => context.go('/account'),
-              icon: const Icon(Icons.person_outline_rounded),
+              icon: ledger.api.session?['accessToken'] is String
+                  ? ClipOval(
+                      child: Image.network(
+                        '${ledger.api.baseUrl}/api/v1/account/photo',
+                        width: 30,
+                        height: 30,
+                        fit: BoxFit.cover,
+                        headers: {
+                          'Authorization':
+                              'Bearer ${ledger.api.session!['accessToken']}',
+                        },
+                        errorBuilder: (_, _, _) =>
+                            const Icon(Icons.person_outline_rounded),
+                      ),
+                    )
+                  : const Icon(Icons.person_outline_rounded),
               tooltip: 'My account',
             ),
         ],
@@ -1209,12 +1257,6 @@ class _FinScreenState extends ConsumerState<FinScreen>
                   Icons.calendar_month_outlined,
                   '${totals['period']['start']} – ${totals['period']['end']}',
                 ),
-                _headerChip(
-                  ledger.status == 'Synced'
-                      ? Icons.cloud_done_outlined
-                      : Icons.sync_problem_outlined,
-                  '${ledger.status}${ledger.queue.isEmpty ? '' : ' · ${ledger.queue.length} pending'}',
-                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -1238,6 +1280,11 @@ class _FinScreenState extends ConsumerState<FinScreen>
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
                 child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: const Color(0xfffce8e6),
+                    foregroundColor: const Color(0xff9c3030),
+                    side: BorderSide.none,
+                  ),
                   onPressed: () => act(() async {
                     if (ledger.queue.isNotEmpty &&
                         !await confirm(

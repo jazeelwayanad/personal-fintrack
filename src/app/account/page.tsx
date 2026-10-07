@@ -48,6 +48,7 @@ export default function AccountPage() {
     try {
       const saved = await profileResponse(await fetch('/api/v1/account', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft) }));
       setProfile(saved); setEditing(false); setDraft({ name: '', email: '', phone: '', currentPassword: '' });
+      window.dispatchEvent(new Event('fintrack-profile-updated'));
       await update().catch(() => {}); toast.success('Account details updated');
     } catch (error) { setError(error instanceof Error ? error.message : 'Could not save. Your entries are still here.'); }
     finally { submitting.current = false; setBusy(false); }
@@ -59,6 +60,7 @@ export default function AccountPage() {
       const photo = file ? await prepareProfilePhoto(file) : null;
       const saved = await profileResponse(await fetch('/api/v1/account/photo', remove ? { method: 'DELETE' } : { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: photo }));
       setProfile(saved); setPhotoFailed(false); toast.success(remove ? 'Profile photo removed' : 'Profile photo updated');
+      window.dispatchEvent(new Event('fintrack-profile-updated'));
     } catch (error) { setError(error instanceof Error ? error.message : 'Could not upload your photo. Please retry.'); }
     finally { submitting.current = false; setBusy(false); if (fileInput.current) fileInput.current.value = ''; }
   }
@@ -86,8 +88,8 @@ export default function AccountPage() {
     <section className="fin-panel p-5 sm:p-6" aria-busy={loading || busy}>
       <div role="group" aria-label="Profile actions" className="mb-3 flex justify-end gap-1">
         <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose profile photo" className="hidden" onChange={event => void changePhoto(event.target.files?.[0])}/>
-        <button type="button" aria-label={profile?.image ? 'Change photo' : 'Upload photo'} title={profile?.image ? 'Change photo' : 'Upload photo'} disabled={busy || loading || !profile?.photoUploadEnabled} className="grid size-11 shrink-0 place-items-center rounded-full bg-muted text-foreground transition-colors hover:bg-accent disabled:opacity-50" onClick={() => fileInput.current?.click()}>{busy ? <LoaderCircle size={18} className="motion-safe:animate-spin"/> : <Camera size={18}/>}</button>
-        {profile?.image && <button type="button" aria-label="Remove photo" title="Remove photo" disabled={busy} className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50" onClick={() => void changePhoto(undefined, true)}><Trash2 size={18}/></button>}
+        {editing && <button type="button" aria-label={profile?.image ? 'Change photo' : 'Upload photo'} title={profile?.image ? 'Change photo' : 'Upload photo'} disabled={busy || loading || !profile?.photoUploadEnabled} className="grid size-11 shrink-0 place-items-center rounded-full bg-muted text-foreground transition-colors hover:bg-accent disabled:opacity-50" onClick={() => fileInput.current?.click()}>{busy ? <LoaderCircle size={18} className="motion-safe:animate-spin"/> : <Camera size={18}/>}</button>}
+        {editing && profile?.image && <button type="button" aria-label="Remove photo" title="Remove photo" disabled={busy} className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50" onClick={() => void changePhoto(undefined, true)}><Trash2 size={18}/></button>}
         {!editing && <button type="button" aria-label="Edit details" title="Edit details" disabled={busy || loading || !profile} className="grid size-11 shrink-0 place-items-center rounded-full text-foreground transition-colors hover:bg-muted disabled:opacity-50" onClick={startEdit}><Pencil size={18}/></button>}
       </div>
       <div className="flex flex-wrap items-center gap-4">
@@ -124,7 +126,7 @@ export default function AccountPage() {
       <Link href="/settings" className="mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"><Settings size={17}/>Settings</Link>
     </section>
     <div className="mt-auto pt-5">
-      <button disabled={busy} onClick={() => void logout()} className="flex w-full items-center justify-center gap-2 rounded-full bg-card px-5 py-4 text-sm font-bold transition-colors hover:bg-[#f5ffef] dark:bg-card dark:hover:bg-muted"><LogOut size={18}/>Sign out</button>
+      <button disabled={busy} onClick={() => void logout()} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#fce8e6] px-5 py-4 text-sm font-bold text-[#9c3030] transition-colors hover:bg-[#f8d9d6] dark:bg-[#482829] dark:text-[#ffc5bf] dark:hover:bg-[#593031]"><LogOut size={18}/>Sign out</button>
     </div>
   </div>;
 }

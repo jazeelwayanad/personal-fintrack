@@ -2,10 +2,11 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, CalendarDays, ArrowLeftRight, ChartColumn, Settings, Wallet, UserRound, RefreshCw } from 'lucide-react';
+import { Home, CalendarDays, ArrowLeftRight, ChartColumn, Settings, Wallet, RefreshCw } from 'lucide-react';
 import { FinanceProvider, useFinance } from './finance-provider';
 import { ConfirmProvider } from './confirm-dialog';
 import { ThemeToggle } from './theme-toggle';
+import { ProfileAvatar } from './profile-avatar';
 
 const tabs = [
   { href: '/', label: 'Home', icon: Home },
@@ -34,23 +35,18 @@ function Shell({ children }: { children: React.ReactNode }) {
           <span>FinTrack<span className="text-primary">.</span></span>
         </Link>
         <nav className="hidden items-center gap-1 rounded-full bg-white/60 p-1 md:flex dark:bg-card/70" aria-label="Main navigation">
-          {tabs.map(tab => <Link key={tab.href} href={tab.href} aria-current={pathname === tab.href ? 'page' : undefined} className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${pathname === tab.href ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>{tab.label}</Link>)}
+          {tabs.map(tab => <Link key={tab.href} href={tab.href} aria-current={pathname === tab.href ? 'page' : undefined} className={`rounded-full px-3 py-2 text-sm font-semibold transition-colors ${pathname === tab.href ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>{tab.label}</Link>)}
         </nav>
         <div className="flex items-center gap-1.5">
+          <span role="status" className="sr-only">{status}{pending ? ` · ${pending} pending` : ''}</span>
+          <button type="button" aria-label="Sync now" title={`${status}${pending ? ` · ${pending} pending` : ''} · Sync now`} disabled={status === 'Syncing'} onClick={() => void store.sync()} className="relative grid size-11 shrink-0 place-items-center rounded-full hover:bg-card disabled:opacity-60"><RefreshCw size={18} className={status === 'Syncing' ? 'motion-safe:animate-spin' : ''}/><span aria-hidden="true" className={`absolute right-2 bottom-2 size-1.5 rounded-full ring-2 ring-background ${status === 'Synced' ? 'bg-emerald-500' : /could not|failed|unavailable|sign in|conflict/i.test(status) ? 'bg-red-500' : 'bg-amber-500'}`}/></button>
           <ThemeToggle/>
-          <Link href="/account" aria-label="My account" title="My account" aria-current={pathname === '/account' ? 'page' : undefined} className={`grid size-11 place-items-center rounded-full transition-colors ${pathname === '/account' ? 'bg-[#171b19] text-white' : 'bg-white/70 hover:bg-white dark:bg-card'}`}><UserRound size={18}/></Link>
+          <Link href="/account" aria-label="My account" title="My account" aria-current={pathname === '/account' ? 'page' : undefined} className={`grid size-11 shrink-0 place-items-center overflow-hidden rounded-full transition-colors ${pathname === '/account' ? 'bg-[#171b19] text-white' : 'bg-white/70 hover:bg-white dark:bg-card'}`}><ProfileAvatar/></Link>
         </div>
       </div>
     </header>
 
     <main id="main-content" className="fin-main mx-auto max-w-6xl px-4 pb-32 pt-6 sm:px-6 md:pb-14">
-      <div className="fin-sync mb-5 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <span role="status" className="rounded-full px-1 py-1.5 font-medium text-muted-foreground dark:bg-card">
-          <span className={`mr-2 inline-block size-2 rounded-full ${status === 'Synced' ? 'bg-emerald-500' : 'bg-amber-500'}`}/>
-          {status}{pending ? ` · ${pending} pending` : ''}
-        </span>
-        <button onClick={() => void store.sync()} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold hover:bg-white/60"><RefreshCw size={14}/>Sync now</button>
-      </div>
       {children}
     </main>
 
