@@ -80,7 +80,7 @@ export default function AccountPage() {
     await signOut({ callbackUrl: '/login' });
   }
 
-  return <div className="flex max-w-2xl min-h-[calc(100dvh-13rem)] flex-col gap-5 pb-20 md:min-h-[calc(100dvh-11rem)] md:pb-0">
+  return <div className="mx-auto flex w-full max-w-2xl min-h-[calc(100dvh-13rem)] flex-col gap-5 pb-20 md:min-h-[calc(100dvh-11rem)] md:pb-0">
     <div className="relative flex min-h-11 items-center justify-center">
       {editing && <button type="button" aria-label="Back to account" disabled={busy} onClick={cancelEdit} className="absolute left-0 grid size-11 place-items-center rounded-full hover:bg-card"><ArrowLeft size={24}/></button>}
       <h1 className="text-2xl font-semibold tracking-tight">{editing ? 'Edit profile' : 'My account'}</h1>

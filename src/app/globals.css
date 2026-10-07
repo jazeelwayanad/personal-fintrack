@@ -215,3 +215,14 @@ body:has([role=dialog]) .fin-add-transaction { visibility: hidden; }
 @media (max-width: 600px) {
   .fin-screen-plans .fin-payment-controls, .fin-screen-reports .fin-payment-controls { max-width: 110px; }
 }
+
+/* Keep the primary action compact and reveal its label for desktop interaction. */
+.fin-add-transaction { width: 52px; height: 52px; padding: 0; gap: 0; }
+.fin-add-transaction svg { flex-shrink: 0; }
+.fin-add-transaction > span { display: none; }
+@media (min-width: 768px) {
+  .fin-add-transaction { width: auto; padding-inline: 17px; }
+  .fin-add-transaction > span { display: block; max-width: 0; overflow: hidden; opacity: 0; white-space: nowrap; transition: max-width 180ms ease, opacity 180ms ease, margin 180ms ease; }
+  .fin-add-transaction:hover > span, .fin-add-transaction:focus-visible > span { max-width: 160px; margin-left: 8px; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .fin-add-transaction > span { transition: none; } }

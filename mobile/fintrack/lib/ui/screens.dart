@@ -1255,13 +1255,12 @@ class _FinScreenState extends ConsumerState<FinScreen>
       ),
       floatingActionButton:
           ['home', 'transactions', 'plans'].contains(widget.screen)
-          ? FloatingActionButton.extended(
+          ? FloatingActionButton(
               backgroundColor: const Color(0xffffe03d),
               foregroundColor: const Color(0xff073b3b),
               tooltip: 'Add transaction',
               onPressed: () => editRecord(context, ledger, 'transaction'),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Add transaction'),
+              child: const Icon(Icons.add_rounded),
             )
           : null,
       bottomNavigationBar: widget.screen == 'account'
