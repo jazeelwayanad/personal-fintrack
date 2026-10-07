@@ -65,7 +65,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-accent border border-border flex items-center justify-center mx-auto mb-4 ">
+          <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-4 ">
             <Wallet className="w-7 h-7 text-[#171b19]" />
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
@@ -77,14 +77,14 @@ export default function LoginPage() {
         {/* Card */}
         <div className="fin-panel p-5 sm:p-8">
           {/* Tab toggle */}
-          <div className="flex bg-[#edf6ee] p-1.5 rounded-2xl gap-1 mb-8 dark:bg-secondary">
+          <div className="flex bg-muted p-1.5 rounded-2xl gap-1 mb-8 dark:bg-secondary">
             <button
               disabled={loading}
               aria-pressed={mode === "login"}
               onClick={() => { setMode("login"); setError(""); }}
               className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ${
                 mode === "login"
-                  ? "bg-primary text-primary-foreground shadow-md"
+                  ? "bg-card text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -96,7 +96,7 @@ export default function LoginPage() {
               onClick={() => { setMode("register"); setError(""); }}
               className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ${
                 mode === "register"
-                  ? "bg-primary text-primary-foreground shadow-md"
+                  ? "bg-card text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -113,7 +113,7 @@ export default function LoginPage() {
                   placeholder="Your name"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="rounded-2xl h-12 bg-background border-input font-medium focus-visible:ring-primary/30"
+                  className="rounded-2xl h-12 bg-muted border-0 font-medium focus-visible:ring-primary/30"
                 />
               </div>
             )}
@@ -127,7 +127,7 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="rounded-2xl h-12 bg-background border-input font-medium focus-visible:ring-primary/30"
+                className="rounded-2xl h-12 bg-muted border-0 font-medium focus-visible:ring-primary/30"
               />
             </div>
 
@@ -142,7 +142,7 @@ export default function LoginPage() {
                   placeholder="Min. 8 characters"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="rounded-2xl h-12 bg-background border-input font-medium focus-visible:ring-primary/30 pr-12"
+                  className="rounded-2xl h-12 bg-muted border-0 font-medium focus-visible:ring-primary/30 pr-12"
                 />
                 <button
                   type="button"
@@ -161,7 +161,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 text-sm font-semibold rounded-xl gap-2"
+                className="w-full h-12 text-sm font-semibold rounded-full gap-2 bg-[#ffe03d] text-[#073b3b] hover:bg-[#f5d532]"
               >
                 {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
                 {!loading && <ArrowRight className="w-5 h-5" />}

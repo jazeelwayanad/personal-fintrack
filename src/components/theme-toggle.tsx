@@ -24,7 +24,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={cycleTheme}
-      className="relative inline-flex items-center justify-center h-11 w-11 rounded-lg border border-border/60 bg-secondary/50 hover:bg-secondary transition-all duration-200 hover:shadow-sm active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="relative inline-flex items-center justify-center h-11 w-11 rounded-full bg-secondary/50 hover:bg-secondary transition-all duration-200"
       title={`Current: ${theme}. Click to switch.`}
     >
       {theme === "light" && (

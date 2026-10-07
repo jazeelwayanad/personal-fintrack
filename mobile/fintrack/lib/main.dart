@@ -45,10 +45,10 @@ class FinTrackApp extends ConsumerWidget {
       final dark = brightness == Brightness.dark;
       final colors =
           ColorScheme.fromSeed(
-            seedColor: const Color(0xff79b7a5),
+            seedColor: const Color(0xff073b3b),
             brightness: brightness,
           ).copyWith(
-            primary: dark ? const Color(0xffddf6a5) : const Color(0xff171b19),
+            primary: dark ? const Color(0xffbbddc4) : const Color(0xff073b3b),
             onPrimary: dark ? const Color(0xff171b19) : Colors.white,
             primaryContainer: dark
                 ? const Color(0xff34483e)
@@ -60,11 +60,11 @@ class FinTrackApp extends ConsumerWidget {
         colorScheme: colors,
         scaffoldBackgroundColor: dark
             ? const Color(0xff141c19)
-            : const Color(0xffdcefe7),
+            : const Color(0xfff7f7f0),
         appBarTheme: AppBarTheme(
           backgroundColor: dark
               ? const Color(0xff141c19)
-              : const Color(0xffdcefe7),
+              : const Color(0xfff7f7f0),
           elevation: 0,
           scrolledUnderElevation: 0,
         ),
@@ -81,9 +81,7 @@ class FinTrackApp extends ConsumerWidget {
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(
-              color: colors.outlineVariant.withValues(alpha: .55),
-            ),
+            borderSide: BorderSide.none,
           ),
         ),
         cardTheme: const CardThemeData(margin: EdgeInsets.zero, elevation: 0),

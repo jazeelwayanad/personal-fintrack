@@ -45,3 +45,35 @@ For browser push, generate a VAPID key pair and set `NEXT_PUBLIC_WEB_PUSH_KEY`, 
 The daily reminder route is scheduled at 03:00 UTC (about 08:30 India time) through `vercel.json`. Set a unique `CRON_SECRET` in Vercel to protect that route. The Vercel Hobby scheduler may execute later within the hour. Delivery history prevents a successful daily summary from being sent twice to one device. Missing Firebase or VAPID configuration does not stop in-app reminders.
 
 Before production deployment: back up the current PostgreSQL database, verify the additive migration against a copy, configure the new secrets, deploy the backend, and test one account on a preview deployment. Then release the website and Android private-test APK. Do not put `DATABASE_URL` or any server secret into `--dart-define` or the Android package.
+
+## Borderless web interface
+
+The authenticated web screens share warm ivory and white surfaces, dark teal, mint and yellow accents, visible focus rings, and a rounded mobile navigation dock. Overview, Plans, Transactions, Reports, Settings, Account, and sign-in use the updated design. Add transaction stays above the dock, with safe-area spacing; forms retain values on errors and guard against duplicate submissions.
+
+**Available credit** is the display label for the existing unallocated-money calculation: recorded balance minus unpaid scheduled expenses, protected savings, and remaining category-budget reserves. It does not change the finance engine or add a borrowing facility.
+
+Overview and the Plans payment schedule display only the oldest unpaid occurrence per plan, including overdue payments. Paying, linking, or skipping advances the displayed occurrence. Reports, reservations, reminders, and the backend retain the complete occurrence collection. No schema migration is required.
+
+The interface reads the existing account-specific store and uses the authenticated `/api/v1/sync` service; no preview sample data enters the application. The isolated `design-preview` remains available separately.
+
+## Account details and Cloudinary profile photos
+
+My account displays editable name, email, and optional phone, with upload/change/remove photo actions. Changing the sign-in email requires the current password; edits refresh the web session from server-side account data. Account endpoints reuse the existing web-session/bearer authentication and origin checks.
+
+Apply the additive `20261007000000_account_profile` and `20261007010000_cloudinary_profile` migrations with `pnpm db:migrate` before deploying this feature. They add optional profile details and Cloudinary references without changing financial records. The old binary field is retained only for compatibility; all new uploads use Cloudinary.
+
+Configure these server-only values in `.env.local` and in the deployment environment, then restart the server:
+
+```dotenv
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+```
+
+No unsigned upload preset is needed. The browser resizes a JPG/PNG/WebP photo (up to 10 MB) to a 512px square JPEG and sends it to the authenticated FinTrack endpoint. The server validates the content and a 512 KB maximum, signs the upload, and stores an authenticated Cloudinary asset. The database stores its public ID and format rather than image bytes. Private photos are delivered through the owner-authenticated photo endpoint using a short-lived signed Cloudinary download request. Secrets and Cloudinary download signatures are never returned to the browser.
+
+Cloudinary upload/signature/access documentation: https://cloudinary.com/documentation/authentication_signatures and https://cloudinary.com/documentation/control_access_to_media . Photos are not public CDN assets; private delivery consumes Cloudinary API bandwidth. Replaced photos are removed on a best-effort basis; if cleanup fails, a generic server log indicates that an unused asset needs cleanup in Cloudinary. Explicit removal preserves the reference if Cloudinary deletion fails, allowing a retry. Legacy database photos remain readable until replaced or removed.
+
+Without configuration, account editing still works and the screen clearly indicates that photo uploads are unavailable. Test storage requests are mocked; live Cloudinary validation requires real credentials. The build regenerates Prisma's client so cached deployments always use the current schema.
+
+Android 1.1.1 (build 5) uses the production API, the Available credit label, one unpaid payment per plan, borderless surfaces, and an accessible yellow Add transaction action. The APK retains the existing private-test signing key; it is not a Play Store release.

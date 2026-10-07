@@ -78,6 +78,24 @@ class Occurrence {
   bool get paid => transactionId != null;
 }
 
+// Presentation only: the full occurrence list remains available to calculations.
+List<Occurrence> nextPaymentPerPlan(List<Occurrence> items) {
+  final pending = items
+      .where(
+        (o) => !o.paid && !['paid', 'received', 'skipped'].contains(o.state),
+      )
+      .toList();
+  pending.sort((a, b) {
+    final date = text(a.doc.data, 'date').compareTo(text(b.doc.data, 'date'));
+    return date == 0 ? a.doc.id.compareTo(b.doc.id) : date;
+  });
+  final seen = <String>{};
+  return pending.where((o) {
+    final planId = text(o.doc.data, 'planId');
+    return seen.add(planId.isEmpty ? o.doc.id : planId);
+  }).toList();
+}
+
 List<Occurrence> occurrences(List<Doc> records, String today, String through) {
   final active = records.where((r) => !r.deleted).toList(),
       map = <String, Doc>{};

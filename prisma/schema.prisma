@@ -15,6 +15,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  profile UserProfile?
   syncRevision Int @default(0)
   syncImported Boolean @default(false)
   records FinancialRecord[]
@@ -136,4 +137,16 @@ model AuthAttempt {
   key String @id
   count Int
   expiresAt DateTime
+}
+
+// Optional account details; photos are served only to the authenticated owner.
+model UserProfile {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone String?
+  photo Bytes?
+  photoType String?
+  photoPublicId String?
+  photoFormat String?
+  updatedAt DateTime @updatedAt
 }

@@ -87,11 +87,6 @@ class _FinScreenState extends ConsumerState<FinScreen>
     decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(24),
-      border: Border.all(
-        color: Theme.of(
-          context,
-        ).colorScheme.outlineVariant.withValues(alpha: .38),
-      ),
     ),
     child: Padding(
       padding: const EdgeInsets.all(20),
@@ -115,11 +110,8 @@ class _FinScreenState extends ConsumerState<FinScreen>
     return Container(
       padding: EdgeInsets.all(hero ? 24 : 20),
       decoration: BoxDecoration(
-        color: hero ? const Color(0xfff5ff76) : colors.surface,
+        color: hero ? const Color(0xff073b3b) : colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: hero
-            ? null
-            : Border.all(color: colors.outlineVariant.withValues(alpha: .38)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,7 +123,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
                   label,
                   style: TextStyle(
                     color: hero
-                        ? const Color(0xff3c4420)
+                        ? const Color(0xffbbddc4)
                         : colors.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
                   ),
@@ -141,7 +133,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
                 hero
                     ? Icons.auto_awesome_rounded
                     : Icons.account_balance_wallet_outlined,
-                color: hero ? const Color(0xff171b19) : colors.primary,
+                color: hero ? const Color(0xffbbddc4) : colors.primary,
                 size: 22,
               ),
             ],
@@ -153,14 +145,14 @@ class _FinScreenState extends ConsumerState<FinScreen>
               fontSize: hero ? 34 : 28,
               letterSpacing: -.8,
               fontWeight: FontWeight.w800,
-              color: hero ? const Color(0xff171b19) : null,
+              color: hero ? Colors.white : null,
             ),
           ),
           if (hero) ...[
             const SizedBox(height: 8),
             const Text(
-              'Ready to spend after bills and savings',
-              style: TextStyle(color: Color(0xff52572c), fontSize: 12),
+              'After bills, savings and category reserves',
+              style: TextStyle(color: Color(0xffbbddc4), fontSize: 12),
             ),
             const SizedBox(height: 20),
             Container(
@@ -549,7 +541,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
     final sections = <Widget>[];
     if (widget.screen == 'home') {
       sections.addAll([
-        metric('Unallocated money', amount(totals, 'unallocated'), hero: true),
+        metric('Available credit', amount(totals, 'unallocated'), hero: true),
         metric('Current balance', amount(totals, 'balance')),
         panel('Money reserved', [
           ListTile(
@@ -671,11 +663,9 @@ class _FinScreenState extends ConsumerState<FinScreen>
         panel('Upcoming and overdue', [
           payments(
             ledger,
-            occurrences(
-              ledger.records,
-              today,
-              totals['period']['end'],
-            ).where((o) => !o.paid && o.state != 'skipped').toList(),
+            nextPaymentPerPlan(
+              occurrences(ledger.records, today, totals['period']['end']),
+            ),
           ),
         ]),
       );
@@ -752,7 +742,9 @@ class _FinScreenState extends ConsumerState<FinScreen>
           ),
         ]),
       );
-      sections.add(panel('Payment schedule', [payments(ledger, all)]));
+      sections.add(
+        panel('Payment schedule', [payments(ledger, nextPaymentPerPlan(all))]),
+      );
     }
     if (widget.screen == 'transactions') {
       sections.add(
@@ -1161,87 +1153,86 @@ class _FinScreenState extends ConsumerState<FinScreen>
             ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: Theme.of(context).brightness == Brightness.light
-              ? const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xffe1f2ed), Color(0xffd4ebd1)],
-                )
-              : null,
-        ),
-        child: RefreshIndicator(
-          onRefresh: ledger.sync,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'YOUR FINANCES',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.5,
-                              ),
+      body: RefreshIndicator(
+        onRefresh: ledger.sync,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 100),
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'YOUR FINANCES',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.screen == 'account'
-                              ? 'My account'
-                              : titles[index < 0 ? 0 : index],
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -.7,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (widget.screen != 'account')
-                    FilledButton.tonalIcon(
-                      onPressed: () => editRecord(
-                        context,
-                        ledger,
-                        widget.screen == 'plans' ? 'plan' : 'transaction',
                       ),
-                      icon: const Icon(Icons.add_rounded, size: 18),
-                      label: const Text('Add'),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.screen == 'account'
+                            ? 'My account'
+                            : titles[index < 0 ? 0 : index],
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -.7,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (widget.screen != 'account')
+                  FilledButton.tonalIcon(
+                    onPressed: () => editRecord(
+                      context,
+                      ledger,
+                      widget.screen == 'plans' ? 'plan' : 'transaction',
                     ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _headerChip(
-                    Icons.calendar_month_outlined,
-                    '${totals['period']['start']} – ${totals['period']['end']}',
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Add'),
                   ),
-                  _headerChip(
-                    ledger.status == 'Synced'
-                        ? Icons.cloud_done_outlined
-                        : Icons.sync_problem_outlined,
-                    '${ledger.status}${ledger.queue.isEmpty ? '' : ' · ${ledger.queue.length} pending'}',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              ...sections.expand((w) => [w, const SizedBox(height: 16)]),
-            ],
-          ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _headerChip(
+                  Icons.calendar_month_outlined,
+                  '${totals['period']['start']} – ${totals['period']['end']}',
+                ),
+                _headerChip(
+                  ledger.status == 'Synced'
+                      ? Icons.cloud_done_outlined
+                      : Icons.sync_problem_outlined,
+                  '${ledger.status}${ledger.queue.isEmpty ? '' : ' · ${ledger.queue.length} pending'}',
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            ...sections.expand((w) => [w, const SizedBox(height: 16)]),
+          ],
         ),
       ),
+      floatingActionButton:
+          ['home', 'transactions', 'plans'].contains(widget.screen)
+          ? FloatingActionButton.extended(
+              backgroundColor: const Color(0xffffe03d),
+              foregroundColor: const Color(0xff073b3b),
+              tooltip: 'Add transaction',
+              onPressed: () => editRecord(context, ledger, 'transaction'),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add transaction'),
+            )
+          : null,
       bottomNavigationBar: widget.screen == 'account'
           ? SafeArea(
               child: Padding(
