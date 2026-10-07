@@ -107,7 +107,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
                           ),
                           const SizedBox(height: 8),
                           const Text(
-                            'Avoid passwords and sensitive financial details. Feedback is saved with your account and app version for developer review.',
+                            'Avoid passwords and sensitive financial details. Feedback is saved with your account and app version for developer review and email notification.',
                             style: TextStyle(fontSize: 12),
                           ),
                           if (error.isNotEmpty)

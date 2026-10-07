@@ -160,6 +160,9 @@ model Feedback {
   topic String
   message String
   appVersion String
+  emailSentAt DateTime?
+  emailAttempts Int @default(0)
+  emailError String?
   createdAt DateTime @default(now())
   @@id([userId, id])
   @@index([createdAt])

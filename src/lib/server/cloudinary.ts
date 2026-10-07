@@ -37,10 +37,13 @@ export async function deleteCloudinaryPhoto(publicId: string) {
   if (!['ok', 'not found'].includes(result.result)) throw new ApiError(502, 'The photo could not be removed. Please retry.');
 }
 export async function downloadCloudinaryPhoto(publicId: string, format: string) {
-  const request = signed({ public_id: publicId, format, type: 'authenticated', attachment: 'false', timestamp: String(Math.floor(Date.now() / 1000)), expires_at: String(Math.floor(Date.now() / 1000) + 60) });
-  const query = new URLSearchParams(request.parameters);
+  const { cloud, secret } = config();
+  if (!/^fintrack\/profiles\/[a-f0-9-]+$/.test(publicId) || !['jpg', 'jpeg', 'png', 'webp'].includes(format)) throw new ApiError(502, 'Photo reference is invalid.');
+  // Signed CDN delivery stays behind our authenticated proxy; the URL never reaches the browser.
+  const path = `c_limit,h_384,w_384,q_auto:good/${publicId}.${format}`;
+  const signature = createHash('sha256').update(path + secret).digest('base64url').slice(0, 8);
   let response: Response;
-  try { response = await fetch(`https://api.cloudinary.com/v1_1/${request.cloud}/image/download?${query}`, { cache: 'no-store', signal: AbortSignal.timeout(20000) }); }
+  try { response = await fetch(`https://res.cloudinary.com/${cloud}/image/authenticated/s--${signature}--/${path}`, { cache: 'no-store', signal: AbortSignal.timeout(20000) }); }
   catch { throw new ApiError(502, 'Your photo could not be loaded. Please retry.'); }
   if (!response.ok) throw new ApiError(502, 'Your photo could not be loaded. Please retry.');
   return response;

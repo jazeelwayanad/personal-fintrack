@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import { api } from '@/lib/server/http';
 import { requireUser } from '@/lib/server/mobile-auth';
@@ -8,10 +9,13 @@ export const runtime = 'nodejs';
 export async function GET(req: Request) {
   try {
     const userId = await requireUser(req);
-    const photo = await prisma.userProfile.findUnique({ where: { userId }, select: { photo: true, photoType: true, photoPublicId: true, photoFormat: true } });
+    const photo = await prisma.userProfile.findUnique({ where: { userId }, select: { photo: true, photoType: true, photoPublicId: true, photoFormat: true, updatedAt: true } });
     if ((!photo?.photoPublicId && !photo?.photo) || !photo?.photoType) return new Response(null, { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    const etag = `"${createHash('sha256').update(`${userId}:${photo.updatedAt.getTime()}`).digest('hex')}"`;
+    const cacheHeaders = { 'Cache-Control': 'private, no-cache', 'ETag': etag, 'Vary': 'Cookie, Authorization' };
+    if (req.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: cacheHeaders });
     const image = photo.photoPublicId && photo.photoFormat ? (await downloadCloudinaryPhoto(photo.photoPublicId, photo.photoFormat)).body : new Uint8Array(photo.photo!);
-    return new Response(image, { headers: { 'Content-Type': photo.photoType, 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' } });
+    return new Response(image, { headers: { 'Content-Type': photo.photoType, ...cacheHeaders, 'X-Content-Type-Options': 'nosniff' } });
   } catch (error) { return api(async () => { throw error; }); }
 }
 export async function POST(req: Request) {

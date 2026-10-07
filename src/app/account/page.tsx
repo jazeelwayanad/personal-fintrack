@@ -28,6 +28,9 @@ export default function AccountPage() {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const previewRef = useRef<string | null>(null);
+  useEffect(() => () => { if (previewRef.current) URL.revokeObjectURL(previewRef.current); }, []);
   const [photoFailed, setPhotoFailed] = useState(false);
   const [draft, setDraft] = useState({ name: '', email: '', phone: '', currentPassword: '' });
   const submitting = useRef(false);
@@ -60,6 +63,8 @@ export default function AccountPage() {
     try {
       const photo = file ? await prepareProfilePhoto(file) : null;
       const saved = await profileResponse(await fetch('/api/v1/account/photo', remove ? { method: 'DELETE' } : { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: photo }));
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+      previewRef.current = photo ? URL.createObjectURL(photo) : null; setPhotoPreview(previewRef.current);
       setProfile(saved); setPhotoFailed(false); toast.success(remove ? 'Profile photo removed' : 'Profile photo updated');
       window.dispatchEvent(new Event('fintrack-profile-updated'));
     } catch (error) { setError(error instanceof Error ? error.message : 'Could not upload your photo. Please retry.'); }
@@ -91,7 +96,7 @@ export default function AccountPage() {
       <div className="flex flex-col items-center gap-4 text-center">
         <div className="relative mb-2">
           <span className="grid size-32 place-items-center overflow-hidden rounded-full bg-accent text-accent-foreground">
-            {profile?.image && !photoFailed ? <img onError={() => setPhotoFailed(true)} src={profile.image} alt="Your profile photo" className="size-full object-cover"/> : <UserRound size={48}/>}
+            {profile?.image && !photoFailed ? <img onError={() => setPhotoFailed(true)} src={photoPreview || profile.image} alt="Your profile photo" className="size-full object-cover"/> : <UserRound size={48}/>}
           </span>
           {!editing ? <button type="button" aria-label="Edit details" title="Edit details" disabled={busy || loading || !profile} onClick={startEdit} className="absolute -right-1 bottom-0 grid size-11 place-items-center rounded-full bg-white text-foreground shadow-sm dark:bg-card"><Pencil size={20}/></button> : <details className="absolute -right-1 bottom-0 text-left">
             <summary aria-label="Edit profile photo" title="Edit profile photo" className="grid size-11 cursor-pointer list-none place-items-center rounded-full bg-white text-foreground shadow-sm dark:bg-card [&::-webkit-details-marker]:hidden"><Pencil size={20}/></summary>

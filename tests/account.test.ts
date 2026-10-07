@@ -56,7 +56,7 @@ describe.skipIf(!enabled)('Private account profile', () => {
         expect(form.get('type')).toBe('authenticated'); expect(form.get('signature')).toMatch(/^[a-f0-9]{64}$/);
         return Response.json({ public_id: form.get('public_id'), format: 'png', type: 'authenticated' });
       }
-      if (String(url).includes('/download')) { expect(String(url)).toContain('type=authenticated'); return new Response(png); }
+      if (String(url).includes('res.cloudinary.com')) { expect(String(url)).toContain('/image/authenticated/s--'); return new Response(png); }
       if (String(url).includes('/destroy')) return Response.json({ result: 'ok' });
       throw new Error('Unexpected external request');
     });
@@ -67,8 +67,10 @@ describe.skipIf(!enabled)('Private account profile', () => {
     expect(stored.photo).toBeNull(); expect(stored.photoPublicId).toMatch(/^fintrack\/profiles\//);
     const response = await photoRoute.GET(request('/photo'));
     expect(response.headers.get('content-type')).toBe('image/png');
-    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('cache-control')).toBe('private, no-cache');
     expect(Buffer.from(await response.arrayBuffer())).toEqual(png);
+    const cached = await photoRoute.GET(new Request('http://localhost/api/v1/account/photo', { headers: { authorization: `Bearer ${token}`, 'if-none-match': response.headers.get('etag')! } }));
+    expect(cached.status).toBe(304);
     expect(await account.readAccount(otherId)).toMatchObject({ image: null });
     expect((await photoRoute.DELETE(request('/photo', 'DELETE'))).status).toBe(200);
     expect((await photoRoute.GET(request('/photo'))).status).toBe(404);
