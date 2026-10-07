@@ -63,8 +63,15 @@ export class FinanceStore {
   sync(): Promise<void> {
     if (this.stopped) return Promise.resolve();
     if (this.running) return this.running;
-    this.running = this.performSync().finally(() => { this.running = undefined; this.notify(); });
+    this.running = this.drainSync().finally(() => { this.running = undefined; this.notify(); });
     return this.running;
+  }
+  private async drainSync() {
+    // Saves can arrive during the pull, after the upload loop has finished.
+    // Drain them (including first-run defaults) before reporting completion.
+    while (await this.performSync()) {
+      if (this.stopped || await this.db.pending.count() === 0) break;
+    }
   }
   private async performSync() {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) { this.status = 'Offline · changes saved on this device'; return; }
@@ -108,6 +115,7 @@ export class FinanceStore {
       });
       if (await this.db.documents.count() === 0) { await this.save(seedRecords(() => crypto.randomUUID()), false); this.status = 'Initial categories ready'; }
       else this.status = 'Synced';
+      return true;
     } catch (e) { this.status = e instanceof Error ? e.message : 'Sync unavailable'; }
   }
   stop() { this.stopped = true; }

@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans), "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-outfit), "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -55,259 +55,88 @@
   --color-expense: var(--expense);
 }
 
-/* ─── Light Theme (Default) ─── */
+
+/* Shared finance surfaces: neutral canvas, mint accents, readable figures. */
 :root {
-  /* Ultra-modern Bright, Crisp Light Theme */
-  --background: oklch(0.985 0.01 250);
-  --foreground: oklch(0.12 0.04 260);
-
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.12 0.04 260);
-
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.12 0.04 260);
-
-  /* FinTrack purple */
-  --primary: oklch(0.55 0.22 292);
-  --primary-foreground: oklch(0.99 0.01 260);
-
-  --secondary: oklch(0.96 0.02 260);
-  --secondary-foreground: oklch(0.2 0.05 260);
-
-  --muted: oklch(0.96 0.02 260);
-  --muted-foreground: oklch(0.5 0.04 260);
-
-  --accent: oklch(0.96 0.03 260);
-  --accent-foreground: oklch(0.2 0.05 260);
-
-  --destructive: oklch(0.6 0.25 20);
-  --border: oklch(0.92 0.02 260);
-  --input: oklch(0.92 0.02 260);
-  --ring: oklch(0.55 0.22 292);
-
-  /* Chart palette */
-  --chart-1: oklch(0.55 0.22 292);
-  --chart-2: oklch(0.6 0.18 150);
-  --chart-3: oklch(0.62 0.22 20);
-  --chart-4: oklch(0.7 0.18 80);
-  --chart-5: oklch(0.55 0.15 300);
-
-  --radius: 1rem;
-
-  --sidebar: oklch(0.985 0.01 250);
-  --sidebar-foreground: oklch(0.12 0.04 260);
-  --sidebar-primary: oklch(0.55 0.22 292);
-  --sidebar-primary-foreground: oklch(0.99 0.01 260);
-  --sidebar-accent: oklch(0.96 0.03 260);
-  --sidebar-accent-foreground: oklch(0.2 0.05 260);
-  --sidebar-border: oklch(0.92 0.02 260);
-  --sidebar-ring: oklch(0.55 0.22 292);
-
-  /* Semantic colors */
-  --success: oklch(0.6 0.18 150);
-  --success-foreground: oklch(0.99 0.01 260);
-  --warning: oklch(0.7 0.18 80);
-  --warning-foreground: oklch(0.12 0.04 260);
-  --income: oklch(0.6 0.18 150); /* Emerald */
-  --expense: oklch(0.62 0.22 20); /* Rose */
+  --background: #f5f7f6; --foreground: #1a2923;
+  --card: #ffffff; --card-foreground: #1a2923;
+  --popover: #ffffff; --popover-foreground: #1a2923;
+  --primary: #245c46; --primary-foreground: #ffffff;
+  --secondary: #edf3ef; --secondary-foreground: #254635;
+  --muted: #eff3f1; --muted-foreground: #5e6d65;
+  --accent: #edf4d9; --accent-foreground: #283d25;
+  --border: #dce5df; --input: #ccd8d0; --ring: #36775b;
+  --destructive: #b93838; --income: #23734c; --expense: #b23e39;
+  --success: #23734c; --success-foreground: #fff;
+  --warning: #986014; --warning-foreground: #fff;
+  --chart-1: #245c46; --chart-2: #7aaa8f; --chart-3: #d5e59a;
+  --chart-4: #6b879e; --chart-5: #b23e39; --radius: .75rem;
+  --sidebar: var(--card); --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary); --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent); --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border); --sidebar-ring: var(--ring);
 }
-
-/* ─── Dark Theme ─── */
 .dark {
-  /* Deep AMOLED/Dark Violet Background */
-  --background: oklch(0.13 0.03 270);
-  --foreground: oklch(0.98 0.01 280);
-
-  /* Glassmorphic semi-transparent cards */
-  --card: oklch(0.17 0.04 270);
-  --card-foreground: oklch(0.98 0.01 280);
-
-  --popover: oklch(0.17 0.04 270);
-  --popover-foreground: oklch(0.98 0.01 280);
-
-  /* Vibrant purple primary */
-  --primary: oklch(0.65 0.25 292);
-  --primary-foreground: oklch(0.13 0.03 280);
-
-  --secondary: oklch(0.2 0.05 270);
-  --secondary-foreground: oklch(0.98 0.01 280);
-
-  --muted: oklch(0.2 0.04 270);
-  --muted-foreground: oklch(0.65 0.05 280);
-
-  --accent: oklch(0.22 0.06 270);
-  --accent-foreground: oklch(0.98 0.01 280);
-
-  --destructive: oklch(0.6 0.25 20);
-  --border: oklch(0.24 0.05 270);
-  --input: oklch(0.24 0.05 270);
-  --ring: oklch(0.65 0.25 292);
-
-  --chart-1: oklch(0.65 0.25 292);
-  --chart-2: oklch(0.65 0.2 150);
-  --chart-3: oklch(0.65 0.25 20);
-  --chart-4: oklch(0.7 0.18 80);
-  --chart-5: oklch(0.6 0.2 300);
-
-  --sidebar: oklch(0.15 0.035 270);
-  --sidebar-foreground: oklch(0.98 0.01 280);
-  --sidebar-primary: oklch(0.65 0.25 292);
-  --sidebar-primary-foreground: oklch(0.13 0.03 280);
-  --sidebar-accent: oklch(0.22 0.06 270);
-  --sidebar-accent-foreground: oklch(0.98 0.01 280);
-  --sidebar-border: oklch(0.24 0.05 270);
-  --sidebar-ring: oklch(0.65 0.25 292);
-
-  --success: oklch(0.65 0.2 150);
-  --success-foreground: oklch(0.13 0.03 280);
-  --warning: oklch(0.75 0.18 80);
-  --warning-foreground: oklch(0.13 0.03 280);
-  --income: oklch(0.65 0.2 150); /* Neon Emerald */
-  --expense: oklch(0.65 0.25 20); /* Neon Rose */
+  color-scheme: dark;
+  --background: #14211b; --foreground: #edf4ef;
+  --card: #1c2c23; --card-foreground: #edf4ef;
+  --popover: #1c2c23; --popover-foreground: #edf4ef;
+  --primary: #cfe59b; --primary-foreground: #18281b;
+  --secondary: #293b30; --secondary-foreground: #edf4ef;
+  --muted: #293b30; --muted-foreground: #afc1b5;
+  --accent: #35472d; --accent-foreground: #e1eeb9;
+  --border: #364b3e; --input: #496151; --ring: #cfe59b;
+  --destructive: #ff9990; --income: #87d7a1; --expense: #ffaaa0;
+  --chart-1: #cfe59b; --chart-2: #87d7a1;
 }
-
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans scroll-smooth;
-  }
-  * {
-    font-family: var(--font-sans);
-  }
-
-  /* Smooth theme transitions */
-  html:not([data-no-transition]) body,
-  html:not([data-no-transition]) body * {
-    transition: background-color 0.3s ease,
-      border-color 0.2s ease,
-      color 0.2s ease,
-      box-shadow 0.2s ease;
-  }
-
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: oklch(0.7 0 0 / 25%);
-    border-radius: 10px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.6 0 0 / 40%);
-  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif; }
+  html { font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif; }
+  button, a, input, select { -webkit-tap-highlight-color: transparent; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  :where(button, a, input, select, summary):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+  input, select { min-width: 0; }
+  button { min-height: 44px; min-width: 44px; }
+}
+.fin-panel { min-width: 0; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); box-shadow: 0 2px 4px rgb(24 45 33 / 2%); }
+.fin-balance-card { border: 1px solid #d6e3ae; border-radius: 1rem; background: #eef4d9; color: #23351f; }
+.fin-activity-row { min-width: 0; border-bottom: 1px solid var(--border); background: var(--card); }
+.fin-activity-row:last-child { border-bottom: 0; }
+.fin-activity-row > div { min-width: 0; overflow-wrap: anywhere; }
+.fin-activity-row strong, .fin-metric { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.fin-mobile-nav { padding-bottom: max(.5rem, env(safe-area-inset-bottom)); }
+.fin-main { padding-bottom: calc(6rem + env(safe-area-inset-bottom)); }
+.fin-dialog { max-height: calc(100dvh - 2rem); overflow-y: auto; overscroll-behavior: contain; }
+.fin-empty { border: 1px dashed var(--border); border-radius: .75rem; padding: 1.5rem; color: var(--muted-foreground); font-size: .875rem; line-height: 1.6; }
+@media (min-width: 768px) { .fin-main { padding-bottom: 3rem; } }
+@media (max-width: 767px) {
+  input:not([type=checkbox]):not([type=color]), select { font-size: 16px; }
+  body:has(input:focus, select:focus, textarea:focus) .fin-mobile-nav { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
 
-/* FinTrack's mint and citrus interface, shared with the Android app. */
-:root {
-  --background: #dcefe7;
-  --foreground: #171b19;
-  --card: #ffffff;
-  --card-foreground: #171b19;
-  --popover: #ffffff;
-  --popover-foreground: #171b19;
-  --primary: #171b19;
-  --primary-foreground: #ffffff;
-  --secondary: #e8f5e9;
-  --secondary-foreground: #17372a;
-  --muted: #eef5ee;
-  --muted-foreground: #68736b;
-  --accent: #f5ff76;
-  --accent-foreground: #171b19;
-  --border: #c9ded2;
-  --input: #d8e6dc;
-  --ring: #4b9d81;
-  --radius: 1.4rem;
-  --income: #298a50;
-  --expense: #bd4742;
-  --chart-1: #171b19;
-  --chart-2: #62a783;
-  --chart-3: #f5ff76;
-  --chart-4: #8dbca7;
-  --chart-5: #bd4742;
-  --sidebar: #dcefe7;
-  --sidebar-foreground: #171b19;
-  --sidebar-primary: #171b19;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e8f5e9;
-  --sidebar-accent-foreground: #17372a;
-  --sidebar-border: #c9ded2;
-  --sidebar-ring: #4b9d81;
+/* Keep the ledger action within thumb reach, clear of the navigation dock. */
+.fin-add-transaction {
+  position: fixed;
+  z-index: 40;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: calc(6rem + env(safe-area-inset-bottom));
+  min-height: 52px;
+  padding-inline: 1.25rem;
+  border-radius: 999px;
+  box-shadow: 0 6px 20px rgb(20 45 32 / 20%);
 }
-
-.dark {
-  --background: #14221c;
-  --foreground: #eff7ed;
-  --card: #203128;
-  --card-foreground: #eff7ed;
-  --popover: #203128;
-  --popover-foreground: #eff7ed;
-  --primary: #e4f69a;
-  --primary-foreground: #14221c;
-  --secondary: #2d4034;
-  --secondary-foreground: #eff7ed;
-  --muted: #2d4034;
-  --muted-foreground: #b4c3b6;
-  --accent: #a5bc67;
-  --accent-foreground: #14221c;
-  --border: #3c5545;
-  --input: #3c5545;
-  --ring: #e4f69a;
-  --income: #70d091;
-  --expense: #ef8d82;
-  --chart-1: #e4f69a;
-  --chart-2: #70d091;
-  --chart-3: #afcb75;
-  --chart-4: #75a88a;
-  --chart-5: #ef8d82;
-  --sidebar: #14221c;
-  --sidebar-foreground: #eff7ed;
-  --sidebar-primary: #e4f69a;
-  --sidebar-primary-foreground: #14221c;
-  --sidebar-accent: #2d4034;
-  --sidebar-accent-foreground: #eff7ed;
-  --sidebar-border: #3c5545;
-  --sidebar-ring: #e4f69a;
+.fin-main:has(.fin-add-transaction) {
+  padding-bottom: calc(10rem + env(safe-area-inset-bottom));
 }
-
-body {
-  background:
-    radial-gradient(circle at 76% 12%, rgb(192 225 174 / 48%), transparent 42%),
-    linear-gradient(145deg, #e1f2ed 0%, #d4ebd1 100%);
-  background-attachment: fixed;
+@media (min-width: 768px) {
+  .fin-add-transaction { right: 2rem; bottom: 2rem; }
+  .fin-main:has(.fin-add-transaction) { padding-bottom: 7rem; }
 }
-
-.dark body {
-  background: linear-gradient(145deg, #14221c 0%, #1b3024 100%);
-}
-
-.fin-panel {
-  border: 1px solid rgb(255 255 255 / 64%);
-  border-radius: 1.75rem;
-  background: var(--card);
-  box-shadow: 0 18px 40px rgb(29 76 50 / 6%);
-}
-
-.dark .fin-panel { border-color: var(--border); }
-
-.fin-balance-card {
-  border: 8px solid white;
-  border-radius: 2.2rem;
-  background: #f5ff76;
-  color: #171b19;
-  box-shadow: 0 20px 45px rgb(97 119 42 / 12%);
-}
-
-.fin-activity-row {
-  border-radius: 1.25rem;
-  background: var(--card);
-  box-shadow: 0 7px 18px rgb(36 86 55 / 5%);
+@media (max-width: 767px) {
+  body:has(input:focus, select:focus, textarea:focus) .fin-add-transaction { visibility: hidden; }
 }

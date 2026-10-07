@@ -11,7 +11,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="h-9 w-9 rounded-lg bg-secondary animate-pulse" />
+      <div className="h-11 w-11 rounded-lg bg-secondary animate-pulse" />
     )
   }
 
@@ -24,14 +24,14 @@ export function ThemeToggle() {
   return (
     <button
       onClick={cycleTheme}
-      className="relative inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border/60 bg-secondary/50 hover:bg-secondary transition-all duration-200 hover:shadow-sm active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="relative inline-flex items-center justify-center h-11 w-11 rounded-lg border border-border/60 bg-secondary/50 hover:bg-secondary transition-all duration-200 hover:shadow-sm active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-ring"
       title={`Current: ${theme}. Click to switch.`}
     >
       {theme === "light" && (
-        <Sun className="h-4 w-4 text-amber-500 transition-all duration-300 animate-in spin-in-90 fade-in" />
+        <Sun className="h-4 w-4 text-muted-foreground transition-all duration-300 animate-in spin-in-90 fade-in" />
       )}
       {theme === "dark" && (
-        <Moon className="h-4 w-4 text-indigo-400 transition-all duration-300 animate-in spin-in-90 fade-in" />
+        <Moon className="h-4 w-4 text-muted-foreground transition-all duration-300 animate-in spin-in-90 fade-in" />
       )}
       {theme === "system" && (
         <Monitor className="h-4 w-4 text-muted-foreground transition-all duration-300 animate-in fade-in" />

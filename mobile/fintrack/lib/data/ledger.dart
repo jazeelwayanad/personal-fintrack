@@ -102,13 +102,21 @@ class Ledger extends ChangeNotifier {
 
   Future<void> sync() {
     if (!signedIn || database == null) return Future.value();
-    return _syncing ??= _performSync().whenComplete(() {
+    return _syncing ??= _drainSync().whenComplete(() {
       _syncing = null;
       notifyListeners();
     });
   }
 
-  Future<void> _performSync() async {
+  Future<void> _drainSync() async {
+    // Include edits saved during a download and newly seeded defaults in this
+    // sync. Stop on errors so offline edits remain queued for a later retry.
+    while (await _performSync()) {
+      if (!signedIn || database == null || queue.isEmpty) break;
+    }
+  }
+
+  Future<bool> _performSync() async {
     status = 'Syncing';
     notifyListeners();
     try {
@@ -116,7 +124,7 @@ class Ledger extends ChangeNotifier {
         final first = queue.first;
         if (first.containsKey('conflict') || first.containsKey('error')) {
           status = 'Review sync conflict in Settings';
-          return;
+          return false;
         }
         Data result;
         try {
@@ -137,7 +145,7 @@ class Ledger extends ChangeNotifier {
           first['conflict'] = result['records'];
           await persist();
           status = 'Review sync conflict in Settings';
-          return;
+          return false;
         }
         queue.removeAt(0);
         for (final value in result['records']) {
@@ -195,10 +203,12 @@ class Ledger extends ChangeNotifier {
         await save(docs, autoSync: false);
         status = 'Initial categories ready';
       }
+      return true;
     } catch (e) {
       status = e is ApiException
           ? e.message
           : 'Offline or server unavailable · saved on this device';
+      return false;
     }
   }
 

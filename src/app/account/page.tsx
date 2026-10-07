@@ -26,13 +26,13 @@ export default function AccountPage() {
     await signOut({ callbackUrl: '/login' });
   }
 
-  return <div className="flex min-h-[calc(100dvh-13rem)] flex-col gap-5 pb-20 md:min-h-[calc(100dvh-11rem)] md:pb-0">
+  return <div className="flex max-w-2xl min-h-[calc(100dvh-13rem)] flex-col gap-5 pb-20 md:min-h-[calc(100dvh-11rem)] md:pb-0">
     <div>
       <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#315845] dark:text-primary">Your FinTrack</p>
-      <h1 className="mt-1 text-3xl font-extrabold tracking-tight">My account</h1>
+      <h1 className="mt-1 text-3xl font-semibold tracking-tight">My account</h1>
     </div>
     <section className="fin-panel flex items-center gap-4 p-6">
-      <span className="grid size-16 shrink-0 place-items-center rounded-[1.35rem] bg-[#f5ff76] text-[#171b19]"><UserRound size={30}/></span>
+      <span className="grid size-16 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground"><UserRound size={30}/></span>
       <div className="min-w-0">
         <h2 className="truncate text-xl font-bold">{session?.user?.name || 'FinTrack account'}</h2>
         <p className="truncate text-sm text-muted-foreground">{session?.user?.email || ''}</p>
@@ -43,7 +43,7 @@ export default function AccountPage() {
         <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#e8f5e6] text-[#315845]"><ShieldCheck size={21}/></span>
         <div><h2 className="font-bold">Your data</h2><p className="mt-1 text-sm text-muted-foreground">{status} · {pending} pending {pending === 1 ? 'change' : 'changes'}</p></div>
       </div>
-      <Link href="/settings" className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#171b19] px-5 py-3 text-sm font-semibold text-white"><Settings size={17}/>Settings</Link>
+      <Link href="/settings" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"><Settings size={17}/>Settings</Link>
     </section>
     <div className="mt-auto pt-5">
       <button onClick={() => void logout()} className="flex w-full items-center justify-center gap-2 rounded-[1.25rem] border border-border bg-white px-5 py-4 text-sm font-bold transition-colors hover:bg-[#f5ffef] dark:bg-card dark:hover:bg-muted"><LogOut size={18}/>Sign out</button>

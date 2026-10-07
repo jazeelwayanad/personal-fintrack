@@ -3,10 +3,11 @@ import { Outfit } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppShell } from "@/components/app-shell";
+import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/components/auth-provider";
 
 const outfit = Outfit({
-  variable: "--font-sans",
+  variable: "--font-outfit",
   subsets: ["latin"],
   display: "swap",
 });
@@ -28,12 +29,13 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#dcefe7" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f7f6" },
     { media: "(prefers-color-scheme: dark)", color: "#14221c" },
   ],
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({
@@ -54,6 +56,7 @@ export default function RootLayout({
             <AppShell>
               {children}
             </AppShell>
+            <Toaster position="top-center" richColors closeButton />
           </ThemeProvider>
         </AuthProvider>
       </body>

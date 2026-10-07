@@ -1,13 +1,18 @@
 'use client';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { FinanceStore } from '@/lib/finance/store';
 import { Document } from '@/lib/finance/model';
 const Context = createContext<{ store: FinanceStore; records: Document[]; status: string; pending: number } | null>(null);
+function LedgerLoading({ children }: { children: ReactNode }) {
+  return <div role="status" className="mx-auto max-w-6xl space-y-5 px-4 py-12"><p className="text-sm font-medium text-muted-foreground">{children}</p><div aria-hidden="true" className="grid grid-cols-2 gap-4 motion-safe:animate-pulse"><div className="h-36 rounded-xl bg-muted"/><div className="h-36 rounded-xl bg-muted"/><div className="col-span-2 h-60 rounded-xl bg-muted"/></div></div>;
+}
 export function FinanceProvider({ children }: { children: ReactNode }) {
-  const { data: session } = useSession();
-  return session?.user?.id ? <Account key={session.user.id} id={session.user.id}>{children}</Account> : <p className="p-8">Loading your account…</p>;
+  const { data: session, status } = useSession();
+  if (status === 'unauthenticated') return <div className="mx-auto max-w-md p-8"><h1 className="text-xl font-semibold">Sign in to open your ledger</h1><p className="my-3 text-sm text-muted-foreground">Your session has ended. Sign in again to continue.</p><Link className="inline-flex min-h-11 items-center font-semibold text-primary" href="/login">Go to sign in</Link></div>;
+  return session?.user?.id ? <Account key={session.user.id} id={session.user.id}>{children}</Account> : <LedgerLoading>Loading your account…</LedgerLoading>;
 }
 function Account({ id, children }: { id: string; children: ReactNode }) {
   const [store] = useState(() => new FinanceStore(id));
@@ -22,7 +27,7 @@ function Account({ id, children }: { id: string; children: ReactNode }) {
     const timer = setInterval(update, 30000);
     return () => { unlisten(); clearInterval(timer); window.removeEventListener('online', update); window.removeEventListener('focus', update); };
   }, [store]);
-  if (!records) return <p className="p-8">Opening your ledger…</p>;
+  if (!records) return <LedgerLoading>Opening your ledger…</LedgerLoading>;
   return <Context.Provider value={{ store, records, status: store.status, pending }}>{children}</Context.Provider>;
 }
 export function useFinance() { const context = useContext(Context); if (!context) throw new Error('FinanceProvider missing'); return context; }
