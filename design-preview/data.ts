@@ -31,4 +31,3 @@ export const sampleRecords: Document[] = [
   ].map(([id, amount, categoryId, date, description, paymentMethodId]) => document(String(id), 'transaction', { type: 'expense', amount, categoryId, date, description, paymentMethodId })),
   ...[['food', 700000], ['transport', 250000], ['shopping', 600000]].map(([categoryId, amount]) => document(`budget:${categoryId}`, 'budget', { categoryId, amount })),
 ];
-
