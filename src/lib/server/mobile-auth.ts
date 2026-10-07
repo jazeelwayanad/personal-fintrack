@@ -25,6 +25,8 @@ export async function requireUser(req: Request) {
   }
   const session = await auth();
   if (!session?.user?.id) throw new ApiError(401, 'Please sign in.');
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { id: true } });
+  if (!user) throw new ApiError(401, 'Please sign in again.');
   return session.user.id;
 }
 const credentials = z.object({ email: z.string().email().max(254).transform(v => v.trim().toLowerCase()), password: z.string().min(8).max(200), name: z.string().trim().max(120).optional() });

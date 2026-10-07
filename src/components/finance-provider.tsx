@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { FinanceStore } from '@/lib/finance/store';
 import { Document } from '@/lib/finance/model';
@@ -28,6 +28,9 @@ function Account({ id, children }: { id: string; children: ReactNode }) {
     return () => { unlisten(); clearInterval(timer); window.removeEventListener('online', update); window.removeEventListener('focus', update); };
   }, [store]);
   if (!records) return <LedgerLoading>Opening your ledger…</LedgerLoading>;
-  return <Context.Provider value={{ store, records, status: store.status, pending }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ store, records, status: store.status, pending }}>
+    {store.status === 'Please sign in again.' && <div role="alert" className="mb-5 rounded-3xl bg-card p-5 text-sm"><p className="font-semibold">Sign in again to reconnect your ledger</p><p className="mt-1 text-muted-foreground">Your saved entries remain on this device.</p><button type="button" className="mt-3 min-h-11 rounded-full bg-primary px-5 font-semibold text-primary-foreground" onClick={() => { store.stop(); void signOut({ callbackUrl: '/login' }); }}>Sign in again</button></div>}
+    {children}
+  </Context.Provider>;
 }
 export function useFinance() { const context = useContext(Context); if (!context) throw new Error('FinanceProvider missing'); return context; }
