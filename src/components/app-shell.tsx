@@ -6,6 +6,7 @@ import { Home, CalendarDays, ArrowLeftRight, ChartColumn, Settings, Wallet, Refr
 import { FinanceProvider, useFinance } from './finance-provider';
 import { ConfirmProvider } from './confirm-dialog';
 import { ThemeToggle } from './theme-toggle';
+import { APP_VERSION, DEVELOPER_NAME } from '@/lib/app-info';
 import { ProfileAvatar } from './profile-avatar';
 
 const tabs = [
@@ -48,6 +49,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
     <main id="main-content" className="fin-main mx-auto max-w-6xl px-4 pb-32 pt-6 sm:px-6 md:pb-14">
       {children}
+      <footer className="mt-8 flex flex-wrap justify-center gap-x-2 gap-y-1 text-center text-xs text-muted-foreground"><span>FinTrack v{APP_VERSION}</span><span aria-hidden="true">·</span><span>Developed by {DEVELOPER_NAME}</span></footer>
     </main>
 
     <nav className="fin-mobile-nav fixed inset-x-3 bottom-2 z-40 flex items-center justify-around rounded-[28px] bg-card/95 px-2 py-2 backdrop-blur-xl md:hidden" aria-label="Mobile navigation">

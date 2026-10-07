@@ -900,6 +900,13 @@ class _FinScreenState extends ConsumerState<FinScreen>
     }
     if (widget.screen == 'settings') {
       sections.add(
+        panel('About FinTrack', [
+          const Text('Version 1.1.1'),
+          const SizedBox(height: 8),
+          const Text('Developed by Eucodes'),
+        ]),
+      );
+      sections.add(
         panel('Financial preferences', [
           Text(
             'Payday: ${totals['preferences']['payday']}\nProtected savings: ${rupees(amount(totals, 'savings'))}\nOver-limit behavior: ${totals['preferences']['limitMode']}',
@@ -1250,6 +1257,12 @@ class _FinScreenState extends ConsumerState<FinScreen>
             ),
             const SizedBox(height: 24),
             ...sections.expand((w) => [w, const SizedBox(height: 16)]),
+            const Center(
+              child: Text(
+                'FinTrack v1.1.1 · Developed by Eucodes',
+                style: TextStyle(fontSize: 12, color: Color(0xff657672)),
+              ),
+            ),
           ],
         ),
       ),
