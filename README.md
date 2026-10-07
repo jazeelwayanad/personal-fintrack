@@ -54,7 +54,7 @@ The authenticated web screens share warm ivory and white surfaces, dark teal, mi
 
 Overview and the Plans payment schedule display only the oldest unpaid occurrence per plan, including overdue payments. Paying, linking, or skipping advances the displayed occurrence. Reports, reservations, reminders, and the backend retain the complete occurrence collection. No schema migration is required.
 
-The interface reads the existing account-specific store and uses the authenticated `/api/v1/sync` service; no preview sample data enters the application. The isolated `design-preview` remains available separately.
+The interface reads the existing account-specific store and uses the authenticated `/api/v1/sync` service; no preview sample data enters the application.
 
 ## Account details and Cloudinary profile photos
 
@@ -76,7 +76,7 @@ Cloudinary upload/signature/access documentation: https://cloudinary.com/documen
 
 Without configuration, account editing still works and the screen clearly indicates that photo uploads are unavailable. Test storage requests are mocked; live Cloudinary validation requires real credentials. The build regenerates Prisma's client so cached deployments always use the current schema.
 
-Android 1.1.1 (build 5) uses the production API, the Available credit label, one unpaid payment per plan, borderless surfaces, and an accessible yellow Add transaction action. The APK retains the existing private-test signing key; it is not a Play Store release.
+Android 1.1.2 (build 6) uses the production API, the Available credit label, one unpaid payment per plan, borderless surfaces, and an accessible yellow Add transaction action. The APK retains the existing private-test signing key; it is not a Play Store release.
 
 ### In-app feedback
 Signed-in users can send suggestions and issue reports from My account. Feedback is stored separately from ledger records, with the account, topic, message, app version and date. No financial records are attached. Apply the additive `20261007020000_feedback` migration before publishing this endpoint. Retries use one submission ID; accounts are limited to five messages per hour.

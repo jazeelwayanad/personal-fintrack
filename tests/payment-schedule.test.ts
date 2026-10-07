@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { occurrences, summary } from '../src/lib/finance/engine';
 import { document, type Document } from '../src/lib/finance/model';
-import { sampleRecords, previewToday } from '../design-preview/data';
 import { nextPaymentPerPlan } from '../src/lib/finance/presentation';
 
 const today = '2026-10-07';
@@ -44,11 +43,5 @@ describe('Payment schedule: one next unpaid occurrence per plan', () => {
     expect(items).toEqual(before);
     expect(summary(records, today)).toEqual(totals);
     expect(totals.commitments).toBe(30000); // Both overdue rent bills remain reserved.
-  });
-  it('keeps sample figures coherent and shows exactly four distinct plans', () => {
-    expect(summary(sampleRecords, previewToday)).toMatchObject({ balance: 6540000, commitments: 1354800, savings: 800000, reservedBudgets: 440000, unallocated: 3945200 });
-    const next = nextPaymentPerPlan(occurrences(sampleRecords, previewToday, '2100-12-31'));
-    expect(next).toHaveLength(4);
-    expect(new Set(next.map(item => item.data.planId)).size).toBe(4);
   });
 });

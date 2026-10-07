@@ -1,9 +1,11 @@
 'use client';
 
+import Image from 'next/image';
+
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { ArrowDownLeft, ArrowUpRight, CalendarDays, ChartColumn, Eye, EyeOff, ShieldCheck, Wallet, ChevronDown } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, CalendarDays, ChartColumn, Eye, EyeOff, ShieldCheck, ChevronDown } from 'lucide-react';
 import { rupees, summary } from '@/lib/finance/engine';
 
 type Totals = ReturnType<typeof summary>;
@@ -40,7 +42,7 @@ export function FinanceOverview({ totals, period, budgets, payments, activity, s
         <section className="fin-panel p-5 sm:p-6"><div className="fin-section-heading"><h2>Your budgets</h2><span>This cycle</span></div><p className="fin-section-description">Small limits. A little more breathing room.</p>{budgets}</section>
         <section className="fin-panel p-5 sm:p-6"><div className="fin-section-heading"><h2>Recent activity</h2><Link href="/transactions">View all <ArrowUpRight size={14}/></Link></div>{activity}</section>
         <details className="fin-panel fin-spending"><summary><span className="fin-icon-mint"><ShieldCheck size={19}/></span><span><strong>Can I spend this?</strong><small>Check before you checkout.</small></span><ChevronDown size={18}/></summary><div className="px-5 pb-5">{spending}</div></details>
-        <p className="fin-overview-note"><Wallet size={14}/>Thoughtful planning. A calmer month.</p>
+        <p className="fin-overview-note"><Image src="/icons/icon-192.png" alt="" width={18} height={18} className="rounded"/>Thoughtful planning. A calmer month.</p>
       </div>
     </div>
   </>;

@@ -147,7 +147,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
                                 'id': id,
                                 'topic': topic,
                                 'message': message.text,
-                                'appVersion': '1.1.1',
+                                'appVersion': '1.1.2',
                               },
                             );
                             if (context.mounted) update(() => sent = true);
@@ -1050,7 +1050,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
     if (widget.screen == 'settings') {
       sections.add(
         panel('About FinTrack', [
-          const Text('Version 1.1.1'),
+          const Text('Version 1.1.2'),
           const SizedBox(height: 8),
           TextButton(
             onPressed: () => openDeveloperLink('https://eucodes.in/'),
@@ -1279,10 +1279,9 @@ class _FinScreenState extends ConsumerState<FinScreen>
                 color: Theme.of(context).colorScheme.primary,
                 borderRadius: BorderRadius.circular(11),
               ),
-              child: Icon(
-                Icons.account_balance_wallet_rounded,
-                color: Theme.of(context).colorScheme.onPrimary,
-                size: 19,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(11),
+                child: Image.asset('assets/fintrack-icon.png', fit: BoxFit.cover),
               ),
             ),
             const SizedBox(width: 10),
@@ -1416,7 +1415,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
             ...sections.expand((w) => [w, const SizedBox(height: 16)]),
             const Center(
               child: Text(
-                'FinTrack v1.1.1 · Developed by Eucodes',
+                'FinTrack v1.1.2 · Developed by Eucodes',
                 style: TextStyle(fontSize: 12, color: Color(0xff657672)),
               ),
             ),
@@ -1571,11 +1570,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         borderRadius: BorderRadius.circular(21),
                       ),
-                      child: const Icon(
-                        Icons.account_balance_wallet_rounded,
-                        size: 34,
-                        color: Color(0xff171b19),
-                      ),
+                      child: ClipRRect(
+                borderRadius: BorderRadius.circular(11),
+                child: Image.asset('assets/fintrack-icon.png', fit: BoxFit.cover),
+              ),
                     ),
                   ),
                   const SizedBox(height: 16),

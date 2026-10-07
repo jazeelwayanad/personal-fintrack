@@ -1,8 +1,10 @@
 'use client';
 
+import Image from 'next/image';
+
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, CalendarDays, ArrowLeftRight, ChartColumn, Settings, Wallet, RefreshCw } from 'lucide-react';
+import { Home, CalendarDays, ArrowLeftRight, ChartColumn, Settings, RefreshCw } from 'lucide-react';
 import { FinanceProvider, useFinance } from './finance-provider';
 import { ConfirmProvider } from './confirm-dialog';
 import { ThemeToggle } from './theme-toggle';
@@ -32,7 +34,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     <header className="relative z-30 fin-header bg-background/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 text-lg font-bold tracking-tight">
-          <span className="grid size-10 place-items-center rounded-xl bg-accent text-accent-foreground"><Wallet size={21}/></span>
+          <Image src="/icons/icon-192.png" alt="" width={40} height={40} className="rounded-xl" priority/>
           <span>FinTrack<span className="text-primary">.</span></span>
         </Link>
         <nav className="hidden items-center gap-1 rounded-full bg-white/60 p-1 md:flex dark:bg-card/70" aria-label="Main navigation">

@@ -1,4 +1,5 @@
 "use client"
+import Image from 'next/image';
 
 import { useRef, useState } from "react"
 import { signIn } from "next-auth/react"
@@ -6,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
-import { ArrowRight, Wallet, Eye, EyeOff } from "lucide-react"
+import { ArrowRight, Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -66,7 +67,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-4 ">
-            <Wallet className="w-7 h-7 text-[#171b19]" />
+            <Image src="/icons/icon-192.png" alt="" width={56} height={56} className="rounded-2xl" priority/>
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
             FinTrack

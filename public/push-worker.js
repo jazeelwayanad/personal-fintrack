@@ -1,6 +1,6 @@
 self.addEventListener('push', event => {
   let data = {}; try { data = event.data.json(); } catch { data = { body: 'Open FinTrack to review your payments.' }; }
-  event.waitUntil(self.registration.showNotification(data.title || 'FinTrack', { body: data.body, icon: '/icons/icon-192.jpg', tag: 'fintrack-daily', data: { url: data.url || '/plans' } }));
+  event.waitUntil(self.registration.showNotification(data.title || 'FinTrack', { body: data.body, icon: '/icons/icon-192.png', tag: 'fintrack-daily', data: { url: data.url || '/plans' } }));
 });
 self.addEventListener('notificationclick', event => {
   event.notification.close();

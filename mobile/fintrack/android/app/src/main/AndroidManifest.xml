@@ -4,7 +4,7 @@
     <application
         android:label="FinTrack"
         android:name="${applicationName}"
-        android:icon="@drawable/fintrack_icon">
+        android:icon="@mipmap/ic_launcher">
         <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="fintrack_reminders"/>
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/fintrack_notification"/>
         <activity
