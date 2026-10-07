@@ -1143,49 +1143,49 @@ class _FinScreenState extends ConsumerState<FinScreen>
           IconButton(
             constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
             onPressed: () => ledger.sync(),
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.sync),
-                Positioned(
-                  right: -2,
-                  bottom: -2,
-                  child: Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: ledger.status == 'Synced'
-                          ? Colors.green
-                          : ledger.status == 'Syncing'
-                          ? Colors.amber
-                          : Colors.red,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            icon: const Icon(Icons.sync),
             tooltip: 'Sync now · ${ledger.status}',
           ),
           if (widget.screen != 'account')
             IconButton(
               onPressed: () => context.go('/account'),
-              icon: ledger.api.session?['accessToken'] is String
-                  ? ClipOval(
-                      child: Image.network(
-                        '${ledger.api.baseUrl}/api/v1/account/photo',
-                        width: 30,
-                        height: 30,
-                        fit: BoxFit.cover,
-                        headers: {
-                          'Authorization':
-                              'Bearer ${ledger.api.session!['accessToken']}',
-                        },
-                        errorBuilder: (_, _, _) =>
-                            const Icon(Icons.person_outline_rounded),
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  ledger.api.session?['accessToken'] is String
+                      ? ClipOval(
+                          child: Image.network(
+                            '${ledger.api.baseUrl}/api/v1/account/photo',
+                            width: 30,
+                            height: 30,
+                            fit: BoxFit.cover,
+                            headers: {
+                              'Authorization':
+                                  'Bearer ${ledger.api.session!['accessToken']}',
+                            },
+                            errorBuilder: (_, _, _) =>
+                                const Icon(Icons.person_outline_rounded),
+                          ),
+                        )
+                      : const Icon(Icons.person_outline_rounded),
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: ledger.status == 'Synced'
+                            ? Colors.green
+                            : ledger.status == 'Syncing'
+                            ? Colors.amber
+                            : Colors.red,
                       ),
-                    )
-                  : const Icon(Icons.person_outline_rounded),
+                    ),
+                  ),
+                ],
+              ),
               tooltip: 'My account',
             ),
         ],

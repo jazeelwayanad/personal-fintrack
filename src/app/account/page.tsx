@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
-import { LogOut, UserRound, Camera, Pencil, LoaderCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, LogOut, UserRound, Camera, Pencil, LoaderCircle, Trash2 } from 'lucide-react';
 import { useFinance } from '@/components/finance-provider';
 import { useConfirm } from '@/components/confirm-dialog';
 import { Field, inputClass, buttonClass } from '@/components/finance-forms';
@@ -41,6 +41,7 @@ export default function AccountPage() {
     if (!profile) return;
     setDraft({ name: profile.name, email: profile.email, phone: profile.phone, currentPassword: '' }); setError(''); setEditing(true);
   }
+  function cancelEdit() { setEditing(false); setError(''); setDraft({ name: '', email: '', phone: '', currentPassword: '' }); }
   async function save(event: React.FormEvent) {
     event.preventDefault(); if (submitting.current) return;
     submitting.current = true; setBusy(true); setError('');
@@ -80,26 +81,26 @@ export default function AccountPage() {
   }
 
   return <div className="flex max-w-2xl min-h-[calc(100dvh-13rem)] flex-col gap-5 pb-20 md:min-h-[calc(100dvh-11rem)] md:pb-0">
-    <div>
-      <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#315845] dark:text-primary">Your FinTrack</p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight">My account</h1>
+    <div className="relative flex min-h-11 items-center justify-center">
+      {editing && <button type="button" aria-label="Back to account" disabled={busy} onClick={cancelEdit} className="absolute left-0 grid size-11 place-items-center rounded-full hover:bg-card"><ArrowLeft size={24}/></button>}
+      <h1 className="text-2xl font-semibold tracking-tight">{editing ? 'Edit profile' : 'My account'}</h1>
     </div>
-    <section className="fin-panel p-5 sm:p-6" aria-busy={loading || busy}>
+    <section className={editing ? 'px-1 py-4 sm:px-6' : 'fin-panel p-5 sm:p-6'} aria-busy={loading || busy}>
       <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose profile photo" className="hidden" onChange={event => void changePhoto(event.target.files?.[0])}/>
-      {!editing && <div role="group" aria-label="Profile actions" className="mb-3 flex justify-end gap-1">
-        {!editing && <button type="button" aria-label="Edit details" title="Edit details" disabled={busy || loading || !profile} className="grid size-11 shrink-0 place-items-center rounded-full text-foreground transition-colors hover:bg-muted disabled:opacity-50" onClick={startEdit}><Pencil size={18}/></button>}
-      </div>}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="shrink-0">
-        <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-full bg-accent text-accent-foreground">
-          {profile?.image && !photoFailed ? <img onError={() => setPhotoFailed(true)} src={profile.image} alt="Your profile photo" className="size-full object-cover"/> : <UserRound size={32}/>}
-        </span>
-        {editing && <div role="group" aria-label="Photo actions" className="mt-2 flex items-center gap-1">
-          <button type="button" aria-label={profile?.image ? 'Change photo' : 'Upload photo'} title={profile?.image ? 'Change photo' : 'Upload photo'} disabled={busy || loading || !profile?.photoUploadEnabled} className="grid size-11 shrink-0 place-items-center rounded-full bg-muted text-foreground transition-colors hover:bg-accent disabled:opacity-50" onClick={() => fileInput.current?.click()}>{busy ? <LoaderCircle size={18} className="motion-safe:animate-spin"/> : <Camera size={18}/>}</button>
-          {profile?.image && <button type="button" aria-label="Remove photo" title="Remove photo" disabled={busy} className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50" onClick={() => void changePhoto(undefined, true)}><Trash2 size={18}/></button>}
-        </div>}
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="relative mb-2">
+          <span className="grid size-32 place-items-center overflow-hidden rounded-full bg-accent text-accent-foreground">
+            {profile?.image && !photoFailed ? <img onError={() => setPhotoFailed(true)} src={profile.image} alt="Your profile photo" className="size-full object-cover"/> : <UserRound size={48}/>}
+          </span>
+          {!editing ? <button type="button" aria-label="Edit details" title="Edit details" disabled={busy || loading || !profile} onClick={startEdit} className="absolute -right-1 bottom-0 grid size-11 place-items-center rounded-full bg-white text-foreground shadow-sm dark:bg-card"><Pencil size={20}/></button> : <details className="absolute -right-1 bottom-0 text-left">
+            <summary aria-label="Edit profile photo" title="Edit profile photo" className="grid size-11 cursor-pointer list-none place-items-center rounded-full bg-white text-foreground shadow-sm dark:bg-card [&::-webkit-details-marker]:hidden"><Pencil size={20}/></summary>
+            <div role="group" aria-label="Photo actions" className="absolute right-0 z-10 mt-2 w-44 rounded-2xl bg-card p-2 shadow-lg">
+              <button type="button" disabled={busy || loading || !profile?.photoUploadEnabled} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-sm hover:bg-muted disabled:opacity-50" onClick={() => fileInput.current?.click()}>{busy ? <LoaderCircle size={18} className="motion-safe:animate-spin"/> : <Camera size={18}/>}Change photo</button>
+              {profile?.image && <button type="button" disabled={busy} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50" onClick={() => void changePhoto(undefined, true)}><Trash2 size={18}/>Remove photo</button>}
+            </div>
+          </details>}
         </div>
-        <div className="min-w-0 flex-1"><h2 className="break-words text-xl font-semibold">{profile?.name || session?.user?.name || 'Your profile'}</h2><p className="mt-1 break-all text-sm text-muted-foreground">{profile?.email || session?.user?.email || ''}</p></div>
+        {!editing && <div className="min-w-0 max-w-full"><h2 className="break-words text-xl font-semibold">{profile?.name || session?.user?.name || 'Your profile'}</h2><p className="mt-1 break-all text-sm text-muted-foreground">{profile?.email || session?.user?.email || ''}</p></div>}
       </div>
       {profile && !profile.photoUploadEnabled && <p className="mt-2 text-xs text-muted-foreground">Photo uploads will be available once Cloudinary is configured.</p>}
       {photoFailed && <p role="status" className="mt-2 text-xs text-muted-foreground">Your photo could not be loaded. <button type="button" className="underline" onClick={() => setPhotoFailed(false)}>Try again</button></p>}
@@ -112,13 +113,13 @@ export default function AccountPage() {
       </dl>}
       {editing && <form onSubmit={save} className="mt-6 space-y-4" aria-busy={busy}>
         <fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
-          <Field label="Name"><input className={inputClass} autoComplete="name" required maxLength={120} value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })}/></Field>
-          <Field label="Email"><input className={inputClass} type="email" autoComplete="email" required maxLength={254} value={draft.email} onChange={event => setDraft({ ...draft, email: event.target.value })}/></Field>
-          <Field label="Phone (optional)"><input className={inputClass} type="tel" autoComplete="tel" maxLength={30} placeholder="Include your country code" value={draft.phone} onChange={event => setDraft({ ...draft, phone: event.target.value })}/></Field>
-          {draft.email.trim().toLowerCase() !== profile?.email && <><Field label="Current password"><input className={inputClass} type="password" autoComplete="current-password" required maxLength={200} value={draft.currentPassword} onChange={event => setDraft({ ...draft, currentPassword: event.target.value })}/></Field><p className="text-xs text-muted-foreground">Confirm your password to change the email you use to sign in.</p></>}
+          <Field label="Name"><input className={`${inputClass} min-h-14 bg-white px-5 text-base dark:bg-card`} autoComplete="name" required maxLength={120} value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })}/></Field>
+          <Field label="Email"><input className={`${inputClass} min-h-14 bg-white px-5 text-base dark:bg-card`} type="email" autoComplete="email" required maxLength={254} value={draft.email} onChange={event => setDraft({ ...draft, email: event.target.value })}/></Field>
+          <Field label="Phone (optional)"><input className={`${inputClass} min-h-14 bg-white px-5 text-base dark:bg-card`} type="tel" autoComplete="tel" maxLength={30} placeholder="Include your country code" value={draft.phone} onChange={event => setDraft({ ...draft, phone: event.target.value })}/></Field>
+          {draft.email.trim().toLowerCase() !== profile?.email && <><Field label="Current password"><input className={`${inputClass} min-h-14 bg-white px-5 text-base dark:bg-card`} type="password" autoComplete="current-password" required maxLength={200} value={draft.currentPassword} onChange={event => setDraft({ ...draft, currentPassword: event.target.value })}/></Field><p className="text-xs text-muted-foreground">Confirm your password to change the email you use to sign in.</p></>}
         </fieldset>
         {error && <p role="alert" className="rounded-2xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
-        <div className="flex flex-wrap gap-3"><button className={buttonClass} disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button><button type="button" className="rounded-full bg-muted px-5 py-3 text-sm" disabled={busy} onClick={() => { setEditing(false); setError(''); setDraft({ name: '', email: '', phone: '', currentPassword: '' }); }}>Cancel</button></div>
+        <div className="flex flex-wrap gap-3"><button className={buttonClass} disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button><button type="button" className="rounded-full bg-muted px-5 py-3 text-sm" disabled={busy} onClick={cancelEdit}>Cancel</button></div>
       </form>}
     </section>
     <div className="mt-auto pt-5">

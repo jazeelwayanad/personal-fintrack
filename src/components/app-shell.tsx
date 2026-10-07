@@ -39,9 +39,9 @@ function Shell({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="flex items-center gap-1.5">
           <span role="status" className="sr-only">{status}{pending ? ` · ${pending} pending` : ''}</span>
-          <button type="button" aria-label="Sync now" title={`${status}${pending ? ` · ${pending} pending` : ''} · Sync now`} disabled={status === 'Syncing'} onClick={() => void store.sync()} className="relative grid size-11 shrink-0 place-items-center rounded-full hover:bg-card disabled:opacity-60"><RefreshCw size={18} className={status === 'Syncing' ? 'motion-safe:animate-spin' : ''}/><span aria-hidden="true" className={`absolute right-2 bottom-2 size-1.5 rounded-full ring-2 ring-background ${status === 'Synced' ? 'bg-emerald-500' : /could not|failed|unavailable|sign in|conflict/i.test(status) ? 'bg-red-500' : 'bg-amber-500'}`}/></button>
+          <button type="button" aria-label="Sync now" title={`${status}${pending ? ` · ${pending} pending` : ''} · Sync now`} disabled={status === 'Syncing'} onClick={() => void store.sync()} className="relative grid size-11 shrink-0 place-items-center rounded-full hover:bg-card disabled:opacity-60"><RefreshCw size={18} className={status === 'Syncing' ? 'motion-safe:animate-spin' : ''}/></button>
           <ThemeToggle/>
-          <Link href="/account" aria-label="My account" title="My account" aria-current={pathname === '/account' ? 'page' : undefined} className={`grid size-11 shrink-0 place-items-center overflow-hidden rounded-full transition-colors ${pathname === '/account' ? 'bg-[#171b19] text-white' : 'bg-white/70 hover:bg-white dark:bg-card'}`}><ProfileAvatar/></Link>
+          <div className="relative shrink-0"><Link href="/account" aria-label="My account" title="My account" aria-current={pathname === '/account' ? 'page' : undefined} className={`grid size-11 shrink-0 place-items-center overflow-hidden rounded-full transition-colors ${pathname === '/account' ? 'bg-[#171b19] text-white' : 'bg-white/70 hover:bg-white dark:bg-card'}`}><ProfileAvatar/></Link><span aria-hidden="true" className={`absolute -right-0.5 bottom-0 size-2 rounded-full ring-2 ring-background ${status === 'Synced' ? 'bg-emerald-500' : /could not|failed|unavailable|sign in|conflict/i.test(status) ? 'bg-red-500' : 'bg-amber-500'}`}/></div>
         </div>
       </div>
     </header>
