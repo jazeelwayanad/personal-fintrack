@@ -62,7 +62,7 @@ Future<bool> confirm(
               Text(
                 title,
                 style: Theme.of(sheetContext).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 8),
@@ -147,6 +147,18 @@ class _RecordEditorState extends State<RecordEditor> {
     super.dispose();
   }
 
+  Widget labelled(String label, Widget child) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        label,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+      ),
+      const SizedBox(height: 8),
+      child,
+    ],
+  );
+
   Widget field(
     String key,
     String label, {
@@ -155,50 +167,53 @@ class _RecordEditorState extends State<RecordEditor> {
     bool integer = false,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 14),
-    child: TextFormField(
-      key: ValueKey(key),
-      initialValue: money
-          ? (amount(data, key) == 0
-                ? ''
-                : (amount(data, key) / 100).toStringAsFixed(2))
-          : integer
-          ? amount(data, key, 1).toString()
-          : text(data, key),
-      decoration: InputDecoration(labelText: label),
-      keyboardType: money || integer
-          ? const TextInputType.numberWithOptions(decimal: true, signed: true)
-          : TextInputType.text,
-      validator: (v) {
-        if (required && (v == null || v.trim().isEmpty)) return 'Required';
-        if (money || integer) {
-          final n = double.tryParse(v ?? '');
-          if (n == null || !n.isFinite) return 'Enter a valid amount';
-          if (key == 'payday' && (n < 1 || n > 31 || n % 1 != 0)) {
-            return 'Use a day from 1 to 31';
-          }
-          if (key == 'intervalDays' && (n < 1 || n > 3650 || n % 1 != 0)) {
-            return 'Use a whole number from 1 to 3650';
-          }
-          if (money && widget.kind != 'adjustment' && n < 0) {
-            return 'Cannot be negative';
-          }
-          if (money &&
-              ['transaction', 'plan'].contains(widget.kind) &&
-              n <= 0) {
-            return 'Must be greater than zero';
-          }
-          if (money && n.abs() > 10000000000) return 'Amount is too large';
-        }
-        return null;
-      },
-      onChanged: (v) {
-        data[key] = money
-            ? ((double.tryParse(v) ?? 0) * 100).round()
+    child: labelled(
+      label,
+      TextFormField(
+        key: ValueKey(key),
+        initialValue: money
+            ? (amount(data, key) == 0
+                  ? ''
+                  : (amount(data, key) / 100).toStringAsFixed(2))
             : integer
-            ? int.tryParse(v) ?? 0
-            : v;
-        if (money) setState(() {});
-      },
+            ? amount(data, key, 1).toString()
+            : text(data, key),
+        decoration: const InputDecoration(),
+        keyboardType: money || integer
+            ? const TextInputType.numberWithOptions(decimal: true, signed: true)
+            : TextInputType.text,
+        validator: (v) {
+          if (required && (v == null || v.trim().isEmpty)) return 'Required';
+          if (money || integer) {
+            final n = double.tryParse(v ?? '');
+            if (n == null || !n.isFinite) return 'Enter a valid amount';
+            if (key == 'payday' && (n < 1 || n > 31 || n % 1 != 0)) {
+              return 'Use a day from 1 to 31';
+            }
+            if (key == 'intervalDays' && (n < 1 || n > 3650 || n % 1 != 0)) {
+              return 'Use a whole number from 1 to 3650';
+            }
+            if (money && widget.kind != 'adjustment' && n < 0) {
+              return 'Cannot be negative';
+            }
+            if (money &&
+                ['transaction', 'plan'].contains(widget.kind) &&
+                n <= 0) {
+              return 'Must be greater than zero';
+            }
+            if (money && n.abs() > 10000000000) return 'Amount is too large';
+          }
+          return null;
+        },
+        onChanged: (v) {
+          data[key] = money
+              ? ((double.tryParse(v) ?? 0) * 100).round()
+              : integer
+              ? int.tryParse(v) ?? 0
+              : v;
+          if (money) setState(() {});
+        },
+      ),
     ),
   );
   Widget select(String key, String label, List<(String, String)> options) {
@@ -206,36 +221,39 @@ class _RecordEditorState extends State<RecordEditor> {
     final selected = options.any((o) => o.$1 == value) ? value : null;
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: DropdownButtonFormField<String>(
-        key: ValueKey(
-          '$key-${text(data, 'type')}-${key == 'recurrence' ? text(data, 'planType') : ''}',
+      child: labelled(
+        label,
+        DropdownButtonFormField<String>(
+          key: ValueKey(
+            '$key-${text(data, 'type')}-${key == 'recurrence' ? text(data, 'planType') : ''}',
+          ),
+          initialValue: selected,
+          isExpanded: true,
+          decoration: const InputDecoration(),
+          items: options
+              .map((o) => DropdownMenuItem(value: o.$1, child: Text(o.$2)))
+              .toList(),
+          validator: (v) => v == null ? 'Choose an option' : null,
+          onChanged:
+              key == 'categoryId' &&
+                  (widget.occurrenceId != null ||
+                      text(data, 'occurrenceId').isNotEmpty)
+              ? null
+              : (v) => setState(() {
+                  data[key] = v;
+                  if (key == 'recurrence' && v == 'custom') {
+                    data['intervalDays'] ??= 28;
+                  }
+                  if (key == 'planType' && v == 'recharge') {
+                    data['recurrence'] = 'custom';
+                    data['intervalDays'] = 28;
+                  }
+                  if (key == 'type') {
+                    data['categoryId'] = null;
+                    data['planType'] = v == 'income' ? 'income' : 'expense';
+                  }
+                }),
         ),
-        initialValue: selected,
-        isExpanded: true,
-        decoration: InputDecoration(labelText: label),
-        items: options
-            .map((o) => DropdownMenuItem(value: o.$1, child: Text(o.$2)))
-            .toList(),
-        validator: (v) => v == null ? 'Choose an option' : null,
-        onChanged:
-            key == 'categoryId' &&
-                (widget.occurrenceId != null ||
-                    text(data, 'occurrenceId').isNotEmpty)
-            ? null
-            : (v) => setState(() {
-                data[key] = v;
-                if (key == 'recurrence' && v == 'custom') {
-                  data['intervalDays'] ??= 28;
-                }
-                if (key == 'planType' && v == 'recharge') {
-                  data['recurrence'] = 'custom';
-                  data['intervalDays'] = 28;
-                }
-                if (key == 'type') {
-                  data['categoryId'] = null;
-                  data['planType'] = v == 'income' ? 'income' : 'expense';
-                }
-              }),
       ),
     );
   }
@@ -315,35 +333,37 @@ class _RecordEditorState extends State<RecordEditor> {
   );
   Widget date(String key, String label, {bool optional = false}) => Padding(
     padding: const EdgeInsets.only(bottom: 14),
-    child: Row(
-      children: [
-        Expanded(
-          child: InkWell(
-            onTap: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate:
-                    DateTime.tryParse(text(data, key)) ?? DateTime.now(),
-                firstDate: DateTime(2000),
-                lastDate: DateTime(2100, 12, 31),
-              );
-              if (picked != null) setState(() => data[key] = iso(picked));
-            },
-            child: InputDecorator(
-              decoration: InputDecoration(
-                labelText: label,
-                suffixIcon: const Icon(Icons.calendar_today_outlined),
+    child: labelled(
+      label,
+      Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate:
+                      DateTime.tryParse(text(data, key)) ?? DateTime.now(),
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100, 12, 31),
+                );
+                if (picked != null) setState(() => data[key] = iso(picked));
+              },
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  suffixIcon: const Icon(Icons.calendar_today_outlined),
+                ),
+                child: Text(text(data, key, 'Choose date')),
               ),
-              child: Text(text(data, key, 'Choose date')),
             ),
           ),
-        ),
-        if (optional)
-          IconButton(
-            onPressed: () => setState(() => data[key] = null),
-            icon: const Icon(Icons.clear),
-          ),
-      ],
+          if (optional)
+            IconButton(
+              onPressed: () => setState(() => data[key] = null),
+              icon: const Icon(Icons.clear),
+            ),
+        ],
+      ),
     ),
   );
   Future<void> save() async {
@@ -489,23 +509,11 @@ class _RecordEditorState extends State<RecordEditor> {
               children: [
                 Row(
                   children: [
-                    CircleAvatar(
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.primaryContainer,
-                      child: Icon(
-                        kind == 'transaction'
-                            ? Icons.swap_horiz_rounded
-                            : Icons.edit_note_rounded,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         title,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),

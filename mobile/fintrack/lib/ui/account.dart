@@ -208,18 +208,31 @@ class _AccountScreenState extends State<AccountScreen> {
     bool required = false,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 18),
-    child: TextFormField(
-      controller: controller,
-      obscureText: secret,
-      keyboardType: keyboard,
-      onChanged: (_) => setState(() {}),
-      decoration: InputDecoration(labelText: label),
-      validator: (v) => required && (v == null || v.trim().isEmpty)
-          ? 'Required'
-          : label == 'Email' &&
-                !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v ?? '')
-          ? 'Enter a valid email'
-          : null,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          obscureText: secret,
+          keyboardType: keyboard,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            fillColor: Theme.of(context).colorScheme.surface,
+            hintText: label == 'Phone' ? 'Include your country code' : null,
+          ),
+          validator: (v) => required && (v == null || v.trim().isEmpty)
+              ? 'Required'
+              : label == 'Email' &&
+                    !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v ?? '')
+              ? 'Enter a valid email'
+              : null,
+        ),
+      ],
     ),
   );
   void closeEditor() {
@@ -281,46 +294,74 @@ class _AccountScreenState extends State<AccountScreen> {
                                 child: Material(
                                   color: Theme.of(context).colorScheme.surface,
                                   shape: const CircleBorder(),
-                                  child: IconButton(
-                                    tooltip: editing
-                                        ? 'Change photo'
-                                        : 'Edit profile',
-                                    onPressed: busy
-                                        ? null
-                                        : editing
-                                        ? (profile?['photoUploadEnabled'] ==
-                                                  true
-                                              ? changePhoto
-                                              : null)
-                                        : () => setState(() => editing = true),
-                                    icon: FinIcon(editing ? 'camera' : 'edit'),
-                                  ),
+                                  child: editing
+                                      ? PopupMenuButton<String>(
+                                          tooltip: 'Edit profile photo',
+                                          enabled: !busy,
+                                          icon: const FinIcon('edit', size: 20),
+                                          onSelected: (action) {
+                                            if (action == 'upload') {
+                                              changePhoto();
+                                            } else {
+                                              removePhoto();
+                                            }
+                                          },
+                                          itemBuilder: (_) => [
+                                            PopupMenuItem(
+                                              value: 'upload',
+                                              enabled:
+                                                  profile?['photoUploadEnabled'] ==
+                                                  true,
+                                              child: const Row(
+                                                children: [
+                                                  FinIcon('camera', size: 18),
+                                                  SizedBox(width: 8),
+                                                  Text('Change photo'),
+                                                ],
+                                              ),
+                                            ),
+                                            if (profile?['image'] != null ||
+                                                preview != null)
+                                              const PopupMenuItem(
+                                                value: 'remove',
+                                                child: Row(
+                                                  children: [
+                                                    FinIcon('trash', size: 18),
+                                                    SizedBox(width: 8),
+                                                    Text('Remove photo'),
+                                                  ],
+                                                ),
+                                              ),
+                                          ],
+                                        )
+                                      : IconButton(
+                                          tooltip: 'Edit profile',
+                                          onPressed: busy
+                                              ? null
+                                              : () => setState(
+                                                  () => editing = true,
+                                                ),
+                                          icon: const FinIcon('edit', size: 20),
+                                        ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        if (editing &&
-                            (profile?['image'] != null || preview != null))
-                          Align(
-                            alignment: Alignment.center,
-                            child: IconButton(
-                              tooltip: 'Remove photo',
-                              onPressed: busy ? null : removePhoto,
-                              icon: const FinIcon('trash'),
-                            ),
-                          ),
                         const SizedBox(height: 24),
-                        Text(
-                          text(
-                            profile ?? widget.ledger.api.session?['user'] ?? {},
-                            'name',
-                            'My profile',
+                        if (!editing)
+                          Text(
+                            text(
+                              profile ??
+                                  widget.ledger.api.session?['user'] ??
+                                  {},
+                              'name',
+                              'My profile',
+                            ),
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
                         const SizedBox(height: 28),
                         if (busy) const LinearProgressIndicator(),
                         if (error != null) ...[
@@ -402,35 +443,23 @@ class _AccountScreenState extends State<AccountScreen> {
                         else
                           Card(
                             child: Padding(
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.all(8),
                               child: Column(
                                 children: [
-                                  ListTile(
-                                    leading: const FinIcon('phone'),
-                                    title: const Text(
-                                      'PHONE',
-                                      style: TextStyle(fontSize: 11),
-                                    ),
-                                    subtitle: Text(
-                                      text(profile ?? {}, 'phone').isEmpty
-                                          ? 'Add your phone number'
-                                          : text(profile!, 'phone'),
-                                    ),
-                                    trailing: const Icon(Icons.chevron_right),
+                                  FinContact(
+                                    icon: 'phone',
+                                    label: 'Phone',
+                                    value: text(profile ?? {}, 'phone').isEmpty
+                                        ? 'Add your phone number'
+                                        : text(profile!, 'phone'),
                                     onTap: profile == null
                                         ? null
                                         : () => setState(() => editing = true),
                                   ),
-                                  ListTile(
-                                    leading: const FinIcon('mail'),
-                                    title: const Text(
-                                      'EMAIL',
-                                      style: TextStyle(fontSize: 11),
-                                    ),
-                                    subtitle: Text(
-                                      text(profile ?? {}, 'email'),
-                                    ),
-                                    trailing: const Icon(Icons.chevron_right),
+                                  FinContact(
+                                    icon: 'mail',
+                                    label: 'Email',
+                                    value: text(profile ?? {}, 'email'),
                                     onTap: profile == null
                                         ? null
                                         : () => setState(() => editing = true),
@@ -454,8 +483,14 @@ class _AccountScreenState extends State<AccountScreen> {
                         const SizedBox(height: 12),
                         FilledButton.icon(
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xfffce8e6),
-                            foregroundColor: const Color(0xff9c3030),
+                            backgroundColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xff482829)
+                                : const Color(0xfffce8e6),
+                            foregroundColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xffffc5bf)
+                                : const Color(0xff9c3030),
                           ),
                           onPressed: busy ? null : widget.onSignOut,
                           icon: const Icon(Icons.logout_rounded),
@@ -463,7 +498,7 @@ class _AccountScreenState extends State<AccountScreen> {
                         ),
                         const SizedBox(height: 32),
                         const Text(
-                          'FinTrack v1.2.0 · Developed by Eucodes',
+                          'FinTrack v1.2.1 · Developed by Eucodes',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 12),
                         ),

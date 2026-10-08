@@ -33,12 +33,12 @@ void main() {
     final ledger = Ledger(CloudApi());
     await tester.pumpWidget(MaterialApp(home: LoginScreen(ledger: ledger)));
     expect(find.text('FinTrack'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
-    await tester.pump();
-    expect(find.text('Enter your email'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign In'));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter a valid email'), findsOneWidget);
     expect(find.text('Use at least 8 characters'), findsOneWidget);
-    await tester.tap(find.text('Create an account'));
-    await tester.pump();
+    await tester.tap(find.text('Create Account'));
+    await tester.pumpAndSettle();
     expect(find.text('Name'), findsOneWidget);
     expect(find.text('Server connection'), findsNothing);
     ledger.dispose();
@@ -58,23 +58,23 @@ void main() {
         child: const FinTrackApp(),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.byType(FinScreen), findsOneWidget);
 
     await tester.tap(find.text('Plans').last);
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.byType(FinScreen), findsOneWidget);
     expect(find.text('Scheduled income and expenses'), findsOneWidget);
     await tester.tap(find.text('Plans').last);
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Activity').last);
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Your ledger'), findsOneWidget);
     await tester.binding.handlePopRoute();
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Scheduled income and expenses'), findsOneWidget);
     await tester.binding.handlePopRoute();
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Hello, there.'), findsOneWidget);
   });
 
@@ -110,7 +110,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('My account'), findsOneWidget);
     await tester.tap(find.byTooltip('Back'));
-    await tester.pump();
+    await tester.pumpAndSettle();
   });
 
   testWidgets('all finance screens fit a compact phone', (tester) async {
@@ -158,7 +158,7 @@ void main() {
       tester.view.physicalSize = Size(width, 720);
       for (final tab in ['Plans', 'Activity', 'Reports', 'Settings', 'Home']) {
         await tester.tap(find.text(tab).last);
-        await tester.pump();
+        await tester.pumpAndSettle();
         expect(
           tester.takeException(),
           isNull,

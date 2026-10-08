@@ -52,6 +52,12 @@ class UiLedger extends Ledger {
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  Future<void> capture(WidgetTester tester, String name) async {
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    await binding.takeScreenshot(name);
+  }
+
   testWidgets('native photo compressor creates a square small JPEG', (
     tester,
   ) async {
@@ -134,19 +140,19 @@ void main() {
     );
     await binding.convertFlutterSurfaceToImage();
     await tester.pumpAndSettle();
-    await binding.takeScreenshot('home');
+    await capture(tester, 'home');
     await tester.tap(find.text('Plans').last);
     await tester.pumpAndSettle();
-    await binding.takeScreenshot('plans');
+    await capture(tester, 'plans');
     await tester.tap(find.text('Activity').last);
     await tester.pumpAndSettle();
     expect(find.text('Your ledger'), findsOneWidget);
     await tester.enterText(find.byType(TextField).first, 'saved search');
     await tester.pump();
-    await binding.takeScreenshot('activity');
+    await capture(tester, 'activity');
     await tester.tap(find.text('Reports').last);
     await tester.pumpAndSettle();
-    await binding.takeScreenshot('reports');
+    await capture(tester, 'reports');
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.text('saved search'), findsOneWidget);
@@ -161,34 +167,53 @@ void main() {
       await tester.pumpAndSettle();
     }
     await tester.ensureVisible(find.text('Mark paid').first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Mark paid').first);
     await tester.pumpAndSettle();
-    await binding.takeScreenshot('payment-editor');
+    await capture(tester, 'payment-editor');
     await tester.ensureVisible(find.text('Save').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Save').last);
     await tester.pumpAndSettle();
     expect(summary(ledger.records, todayIndia())['expenses'], 100000);
     expect(summary(ledger.records, todayIndia())['commitments'], 50000);
     expect(summary(ledger.records, todayIndia())['unallocated'], 300000);
-    await binding.takeScreenshot('paid-budget');
+    await capture(tester, 'paid-budget');
     await tester.tap(find.text('Settings').last);
     await tester.pumpAndSettle();
-    await binding.takeScreenshot('settings');
+    await capture(tester, 'settings');
     await tester.tap(find.text('Home').last);
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('My account'));
     await tester.pumpAndSettle();
-    await binding.takeScreenshot('account');
+    await capture(tester, 'account');
+    await tester.ensureVisible(find.text('Give feedback'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Give feedback'));
+    await tester.pumpAndSettle();
+    await capture(tester, 'feedback');
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Edit profile'));
     await tester.pumpAndSettle();
-    await binding.takeScreenshot('account-edit');
+    await capture(tester, 'account-edit');
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Toggle theme'));
     await tester.pumpAndSettle();
-    await binding.takeScreenshot('home-dark');
+    await capture(tester, 'home-dark');
+    ProviderScope.containerOf(
+      tester.element(find.byType(FinTrackApp)),
+    ).read(themeProvider.notifier).state = ThemeMode.light;
+    ledger.api.session = null;
+    ledger.notifyAccountChanged();
+    await tester.pumpAndSettle();
+    await capture(tester, 'login');
+    await tester.tap(find.text('Create Account'));
+    await tester.pumpAndSettle();
+    await capture(tester, 'register');
     expect(tester.takeException(), isNull);
     final database = ledger.database;
     ledger.database = null;

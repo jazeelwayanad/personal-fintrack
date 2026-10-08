@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'navigation.dart';
 import 'patterns.dart';
+import 'motion.dart';
+import 'package:intl/intl.dart';
 import 'account.dart';
 import 'package:uuid/uuid.dart';
 import '../main.dart';
@@ -54,7 +56,24 @@ class _FinScreenState extends ConsumerState<FinScreen>
         builder: (context, update) => PopScope(
           canPop: !busy,
           child: AlertDialog(
-            title: const Text('Give feedback'),
+            titlePadding: const EdgeInsets.fromLTRB(24, 20, 16, 0),
+            contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            title: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Give feedback',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: busy ? null : () => Navigator.pop(dialogContext),
+                  icon: const Icon(Icons.close, size: 20),
+                ),
+              ],
+            ),
             content: SingleChildScrollView(
               child: sent
                   ? const Text('Thank you. Your feedback has been received.')
@@ -68,10 +87,15 @@ class _FinScreenState extends ConsumerState<FinScreen>
                             'Share an idea or report an issue with Eucodes. Your ledger is not attached.',
                           ),
                           const SizedBox(height: 16),
+                          const Text(
+                            'Topic',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
                             initialValue: topic,
                             decoration: const InputDecoration(
-                              labelText: 'Topic',
+                              hintText: 'Topic',
                             ),
                             items: const [
                               DropdownMenuItem(
@@ -92,6 +116,11 @@ class _FinScreenState extends ConsumerState<FinScreen>
                                 : (value) => update(() => topic = value!),
                           ),
                           const SizedBox(height: 16),
+                          const Text(
+                            'Your feedback',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 8),
                           TextFormField(
                             controller: message,
                             enabled: !busy,
@@ -99,7 +128,18 @@ class _FinScreenState extends ConsumerState<FinScreen>
                             maxLines: 6,
                             maxLength: 3000,
                             decoration: const InputDecoration(
-                              labelText: 'Your feedback',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(24),
+                                ),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(24),
+                                ),
+                                borderSide: BorderSide.none,
+                              ),
                               hintText: 'What could we improve?',
                             ),
                             validator: (value) =>
@@ -127,41 +167,49 @@ class _FinScreenState extends ConsumerState<FinScreen>
                     ),
             ),
             actions: [
-              TextButton(
-                onPressed: busy ? null : () => Navigator.pop(dialogContext),
-                child: Text(sent ? 'Done' : 'Cancel'),
-              ),
+              if (sent)
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Done'),
+                ),
               if (!sent)
-                FilledButton(
-                  onPressed: busy
-                      ? null
-                      : () async {
-                          if (!form.currentState!.validate()) return;
-                          update(() {
-                            busy = true;
-                            error = '';
-                          });
-                          try {
-                            await ledger.api.request(
-                              '/api/v1/feedback',
-                              method: 'POST',
-                              body: {
-                                'id': id,
-                                'topic': topic,
-                                'message': message.text,
-                                'appVersion': '1.2.0',
-                              },
-                            );
-                            if (context.mounted) update(() => sent = true);
-                          } catch (e) {
-                            if (context.mounted) {
-                              update(() => error = e.toString());
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xffffe03d),
+                      foregroundColor: const Color(0xff073b3b),
+                    ),
+                    onPressed: busy
+                        ? null
+                        : () async {
+                            if (!form.currentState!.validate()) return;
+                            update(() {
+                              busy = true;
+                              error = '';
+                            });
+                            try {
+                              await ledger.api.request(
+                                '/api/v1/feedback',
+                                method: 'POST',
+                                body: {
+                                  'id': id,
+                                  'topic': topic,
+                                  'message': message.text,
+                                  'appVersion': '1.2.1',
+                                },
+                              );
+                              if (context.mounted) update(() => sent = true);
+                            } catch (e) {
+                              if (context.mounted) {
+                                update(() => error = e.toString());
+                              }
+                            } finally {
+                              if (context.mounted) update(() => busy = false);
                             }
-                          } finally {
-                            if (context.mounted) update(() => busy = false);
-                          }
-                        },
-                  child: Text(busy ? 'Sending…' : 'Send feedback'),
+                          },
+                    child: Text(busy ? 'Sending…' : 'Send feedback'),
+                  ),
                 ),
             ],
           ),
@@ -236,6 +284,9 @@ class _FinScreenState extends ConsumerState<FinScreen>
     }
   }
 
+  String dateLabel(String date) =>
+      DateFormat('d MMM yyyy').format(DateTime.parse(date));
+
   Widget panel(String title, List<Widget> children) => Material(
     color: Theme.of(context).brightness == Brightness.dark
         ? const Color(0xff1c3535)
@@ -246,13 +297,33 @@ class _FinScreenState extends ConsumerState<FinScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 16),
+          if (title != 'Can I spend this?')
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (title == 'Next payments' || title == 'Recent activity')
+                  TextButton(
+                    onPressed: () => navigateTo(
+                      context,
+                      title == 'Next payments' ? '/plans' : '/transactions',
+                    ),
+                    child: Text(
+                      title == 'Next payments' ? 'Manage plans' : 'View all',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                if (title == 'Your budgets')
+                  const Text('This cycle', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+          if (title != 'Can I spend this?') const SizedBox(height: 16),
           ...children,
         ],
       ),
@@ -264,7 +335,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
       color: hero
           ? const Color(0xff073b3b)
           : Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(hero ? 28 : 24),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -283,7 +354,10 @@ class _FinScreenState extends ConsumerState<FinScreen>
               ),
             ),
             if (hero)
-              IconButton(
+              IconButton.filled(
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: .1),
+                ),
                 tooltip: hideBalances ? 'Show balance' : 'Hide balance',
                 onPressed: () => setState(() => hideBalances = !hideBalances),
                 icon: const FinIcon('eye', color: Colors.white),
@@ -294,7 +368,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
         Text(
           hideBalances ? '••••' : rupees(value),
           style: TextStyle(
-            fontSize: hero ? 38 : 28,
+            fontSize: hero ? 40 : 24,
             fontWeight: FontWeight.w600,
             letterSpacing: -1,
             color: hero ? Colors.white : null,
@@ -308,7 +382,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
           ),
           const SizedBox(height: 24),
           Text(
-            '${summary(ref.read(ledgerProvider).records, todayIndia())['period']['start']} – ${addDays(summary(ref.read(ledgerProvider).records, todayIndia())['period']['end'], -1)} · INR',
+            '${dateLabel(summary(ref.read(ledgerProvider).records, todayIndia())['period']['start'])} – ${dateLabel(addDays(summary(ref.read(ledgerProvider).records, todayIndia())['period']['end'], -1))} · INR',
             style: const TextStyle(fontSize: 12, color: Color(0xffbbddc4)),
           ),
         ],
@@ -384,7 +458,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
                 'Link a transaction',
                 style: Theme.of(
                   sheetContext,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               Text(
@@ -455,10 +529,10 @@ class _FinScreenState extends ConsumerState<FinScreen>
           decoration: BoxDecoration(
             color: o.doc.id == widget.occurrenceId
                 ? Theme.of(context).colorScheme.primaryContainer
-                : Theme.of(context).colorScheme.surfaceContainerLow,
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(17),
           ),
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -466,11 +540,25 @@ class _FinScreenState extends ConsumerState<FinScreen>
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(right: 12),
-                    child: FinIcon(
-                      'plans',
-                      color: categoryColor(
-                        ledger.active,
-                        text(o.doc.data, 'categoryId'),
+                    child: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: categoryColor(
+                          ledger.active,
+                          text(o.doc.data, 'categoryId'),
+                        ).withValues(alpha: .15),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Center(
+                        child: FinIcon(
+                          'plans',
+                          size: 20,
+                          color: categoryColor(
+                            ledger.active,
+                            text(o.doc.data, 'categoryId'),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -484,7 +572,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          text(o.doc.data, 'date'),
+                          dateLabel(text(o.doc.data, 'date')),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
@@ -495,7 +583,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
                     children: [
                       Text(
                         rupees(amount(o.doc.data, 'amount')),
-                        style: const TextStyle(fontWeight: FontWeight.w800),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 4),
                       Container(
@@ -669,7 +757,13 @@ class _FinScreenState extends ConsumerState<FinScreen>
     final labels = {for (final r in active) r.id: text(r.data, 'name')};
     final through = '${int.parse(today.substring(0, 4)) + 1}-12-31';
     final all = occurrences(ledger.records, today, through);
-    final titles = ['Home', 'Plans', 'Transactions', 'Reports', 'Settings'],
+    final titles = [
+          'Home',
+          'Plans & budgets',
+          'Transactions',
+          'Reports',
+          'Settings',
+        ],
         routes = ['/', '/plans', '/transactions', '/reports', '/settings'];
     final index = [
       'home',
@@ -683,28 +777,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
       sections.addAll([
         metric('Available credit', amount(totals, 'unallocated'), hero: true),
         quickActions(ledger),
-        panel('Balance breakdown', [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Current balance'),
-            trailing: Text(rupees(amount(totals, 'balance'))),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Unpaid bills'),
-            trailing: Text(rupees(amount(totals, 'commitments'))),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Category budgets'),
-            trailing: Text(rupees(amount(totals, 'reservedBudgets'))),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Protected savings'),
-            trailing: Text(rupees(amount(totals, 'savings'))),
-          ),
-        ]),
+        balanceBreakdown(totals),
       ]);
       if (amount(totals, 'unallocated') < 0) {
         sections.add(
@@ -725,7 +798,29 @@ class _FinScreenState extends ConsumerState<FinScreen>
           ExpansionTile(
             key: const PageStorageKey('spending-allowance-expanded'),
             tilePadding: EdgeInsets.zero,
-            title: const Text('Check before you checkout'),
+            leading: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: const Color(0xffbbddc4),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.shield_outlined,
+                  size: 20,
+                  color: Color(0xff214b43),
+                ),
+              ),
+            ),
+            title: const Text(
+              'Can I spend this?',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+            subtitle: const Text(
+              'Check before you checkout.',
+              style: TextStyle(fontSize: 11),
+            ),
             children: [
               TextField(
                 controller: checkController,
@@ -815,9 +910,23 @@ class _FinScreenState extends ConsumerState<FinScreen>
           ),
         ]),
       );
-      sections.add(panel('Category budgets', budgetRows(ledger, totals)));
+      sections.add(
+        panel('Your budgets', [
+          const Text(
+            'Small limits. A little more breathing room.',
+            style: TextStyle(fontSize: 12),
+          ),
+          const SizedBox(height: 16),
+          ...budgetRows(ledger, totals),
+        ]),
+      );
       sections.add(
         panel('Next payments', [
+          const Text(
+            'The oldest unpaid payment for each plan, including overdue bills.',
+            style: TextStyle(fontSize: 12),
+          ),
+          const SizedBox(height: 16),
           payments(
             ledger,
             nextPaymentPerPlan(
@@ -840,10 +949,6 @@ class _FinScreenState extends ConsumerState<FinScreen>
               'No transactions yet. Add your first income or expense.',
             ),
           for (final t in recent.take(4)) transactionRow(ledger, t),
-          TextButton(
-            onPressed: () => navigateTo(context, '/transactions'),
-            child: const Text('View all'),
-          ),
         ]),
       );
       sections.add(spending);
@@ -851,32 +956,47 @@ class _FinScreenState extends ConsumerState<FinScreen>
     if (widget.screen == 'plans') {
       sections.add(
         panel('Scheduled income and expenses', [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children:
-                  [
-                        'all',
-                        'salary',
-                        'income',
-                        'emi',
-                        'subscription',
-                        'expense',
-                        'recharge',
-                      ]
-                      .map(
-                        (v) => Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: ChoiceChip(
-                            label: Text(v == 'emi' ? 'EMIs' : v),
-                            selected: planFilter == v,
-                            onSelected: (_) => setState(() => planFilter = v),
+          Wrap(
+            spacing: 2,
+            runSpacing: 8,
+            children:
+                [
+                      'all',
+                      'salary',
+                      'income',
+                      'emi',
+                      'subscription',
+                      'expense',
+                      'recharge',
+                    ]
+                    .map(
+                      (v) => Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text(
+                            v == 'emi' ? 'EMIs' : v,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: planFilter == v
+                                  ? Theme.of(context).colorScheme.onPrimary
+                                  : null,
+                            ),
                           ),
+                          selected: planFilter == v,
+                          onSelected: (_) => setState(() => planFilter = v),
                         ),
-                      )
-                      .toList(),
-            ),
+                      ),
+                    )
+                    .toList(),
           ),
+          if (!active.any(
+            (r) =>
+                r.kind == 'plan' &&
+                (planFilter == 'all' || text(r.data, 'planType') == planFilter),
+          ))
+            const FinEmpty(
+              'No plans yet. Add a plan to reserve money for future payments.',
+            ),
           for (final p in active.where(
             (r) =>
                 r.kind == 'plan' &&
@@ -1021,44 +1141,17 @@ class _FinScreenState extends ConsumerState<FinScreen>
         ),
         panel('Budget versus actual', budgetRows(ledger, totals)),
         panel('Expenses by category', [
+          const Text(
+            'Share of recorded expenses this cycle',
+            style: TextStyle(fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          if (amount(totals, 'expenses') == 0)
+            const FinEmpty('No expenses recorded in this cycle.'),
           for (final c in active.where(
             (r) => r.kind == 'category' && text(r.data, 'type') == 'expense',
           ))
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: categoryColor(active, c.id),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              title: Text(text(c.data, 'name')),
-              trailing: Text(
-                rupees(
-                  active
-                      .where(
-                        (t) =>
-                            t.kind == 'transaction' &&
-                            text(t.data, 'type') == 'expense' &&
-                            text(t.data, 'categoryId') == c.id &&
-                            text(
-                                  t.data,
-                                  'date',
-                                ).compareTo(totals['period']['start']) >=
-                                0 &&
-                            text(
-                                  t.data,
-                                  'date',
-                                ).compareTo(totals['period']['end']) <
-                                0 &&
-                            text(t.data, 'date').compareTo(today) <= 0,
-                      )
-                      .fold(0, (v, t) => v + amount(t.data, 'amount')),
-                ),
-              ),
-            ),
+            categoryReport(ledger, c, totals, today),
         ]),
         panel('Planned versus paid', [
           payments(
@@ -1133,7 +1226,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
     if (widget.screen == 'settings') {
       sections.add(
         panel('About FinTrack', [
-          const Text('Version 1.2.0'),
+          const Text('Version 1.2.1'),
           const SizedBox(height: 8),
           TextButton(
             onPressed: () => openDeveloperLink('https://eucodes.in/'),
@@ -1297,6 +1390,10 @@ class _FinScreenState extends ConsumerState<FinScreen>
         ]),
       );
     }
+    if (widget.screen == 'settings') {
+      final about = sections.removeAt(0);
+      sections.insert(sections.length - 1, about);
+    }
     if (widget.screen == 'account') {
       return AccountScreen(
         ledger: ledger,
@@ -1317,23 +1414,21 @@ class _FinScreenState extends ConsumerState<FinScreen>
     }
     return Scaffold(
       appBar: AppBar(
-        leading: widget.screen == 'account'
+        leading: widget.screen != 'home'
             ? IconButton(
                 onPressed: () => navigateBack(context),
                 icon: const Icon(Icons.arrow_back_rounded),
                 tooltip: 'Back to home',
               )
             : null,
+        titleSpacing: widget.screen == 'home' ? 16 : 0,
+        toolbarHeight: 64,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(11),
-              ),
+            SizedBox(
+              width: 40,
+              height: 40,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(11),
                 child: Image.asset(
@@ -1349,9 +1444,9 @@ class _FinScreenState extends ConsumerState<FinScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
-                    'FinTrack',
+                    'FinTrack.',
                     style: TextStyle(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       letterSpacing: -.5,
                     ),
                   ),
@@ -1362,21 +1457,28 @@ class _FinScreenState extends ConsumerState<FinScreen>
         ),
         actions: [
           IconButton(
+            onPressed: ledger.status == 'Syncing' ? null : () => ledger.sync(),
+            icon: const FinIcon('sync', size: 18),
+            tooltip: 'Sync now · ${ledger.status}',
+          ),
+          IconButton.filledTonal(
+            style: IconButton.styleFrom(
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerLow,
+            ),
             tooltip: 'Toggle theme',
             onPressed: () => ref.read(themeProvider.notifier).state =
                 ref.read(themeProvider) == ThemeMode.dark
                 ? ThemeMode.light
                 : ThemeMode.dark,
-            icon: const FinIcon('sun'),
-          ),
-          IconButton(
-            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-            onPressed: () => ledger.sync(),
-            icon: const FinIcon('sync'),
-            tooltip: 'Sync now · ${ledger.status}',
+            icon: const FinIcon('sun', size: 18),
           ),
           if (widget.screen != 'account')
-            IconButton(
+            IconButton.filledTonal(
+              style: IconButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.surface,
+              ),
               onPressed: () => navigateTo(context, '/account'),
               icon: Stack(
                 clipBehavior: Clip.none,
@@ -1385,8 +1487,8 @@ class _FinScreenState extends ConsumerState<FinScreen>
                       ? ClipOval(
                           child: Image.network(
                             '${ledger.api.baseUrl}${ledger.api.session?['user']?['image'] ?? '/api/v1/account/photo'}',
-                            width: 30,
-                            height: 30,
+                            width: 40,
+                            height: 40,
                             fit: BoxFit.cover,
                             headers: {
                               'Authorization':
@@ -1401,15 +1503,18 @@ class _FinScreenState extends ConsumerState<FinScreen>
                     right: -2,
                     bottom: -2,
                     child: Container(
-                      width: 6,
-                      height: 6,
+                      width: 8,
+                      height: 8,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: ledger.status == 'Synced'
-                            ? Colors.green
-                            : ledger.status == 'Syncing'
-                            ? Colors.amber
-                            : Colors.red,
+                            ? const Color(0xff10b981)
+                            : RegExp(
+                                'could not|failed|unavailable|sign in|conflict',
+                                caseSensitive: false,
+                              ).hasMatch(ledger.status)
+                            ? Colors.red
+                            : Colors.amber,
                       ),
                     ),
                   ),
@@ -1423,7 +1528,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
         onRefresh: ledger.sync,
         child: ListView(
           key: PageStorageKey('fintrack-${widget.screen}'),
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 100),
+          padding: const EdgeInsets.fromLTRB(22, 16, 22, 100),
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -1432,14 +1537,16 @@ class _FinScreenState extends ConsumerState<FinScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'YOUR FINANCES',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.5,
+                      if (widget.screen != 'home')
+                        Text(
+                          'YOUR FINANCES, IN FOCUS',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.5,
+                              ),
                         ),
-                      ),
                       const SizedBox(height: 4),
                       Text(
                         widget.screen == 'home'
@@ -1449,8 +1556,8 @@ class _FinScreenState extends ConsumerState<FinScreen>
                             : titles[index < 0 ? 0 : index],
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -.7,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -1.2,
                             ),
                       ),
                     ],
@@ -1464,27 +1571,76 @@ class _FinScreenState extends ConsumerState<FinScreen>
                       widget.screen == 'plans' ? 'plan' : 'transaction',
                     ),
                     icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Add'),
+                    label: const Text('Add plan'),
                   ),
               ],
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _headerChip(
-                  Icons.calendar_month_outlined,
-                  '${totals['period']['start']} – ${addDays(totals['period']['end'], -1)}',
+            const SizedBox(height: 8),
+            if (widget.screen == 'home')
+              const Text(
+                'Let’s make room for what matters.',
+                style: TextStyle(fontSize: 14),
+              )
+            else
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _headerChip(
+                    Icons.calendar_month_outlined,
+                    widget.screen == 'settings'
+                        ? 'Make FinTrack work for you'
+                        : widget.screen == 'transactions'
+                        ? 'Browse recorded income and expenses · INR'
+                        : '${dateLabel(totals['period']['start'])} – ${dateLabel(addDays(totals['period']['end'], -1))} · INR',
+                  ),
+                ],
+              ),
+            if (widget.screen == 'home') ...[
+              const SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: const Text(
+                          'Overview',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => navigateTo(context, '/plans'),
+                        child: const Text(
+                          'Budgets',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
             const SizedBox(height: 24),
-            ...sections.expand((w) => [w, const SizedBox(height: 16)]),
+            sectionLayout(sections),
             const Center(
               child: Text(
-                'FinTrack v1.2.0 · Developed by Eucodes',
+                'FinTrack v1.2.1 · Developed by Eucodes',
                 style: TextStyle(fontSize: 12, color: Color(0xff657672)),
               ),
             ),
@@ -1492,93 +1648,218 @@ class _FinScreenState extends ConsumerState<FinScreen>
         ),
       ),
       floatingActionButton:
-          ['home', 'transactions', 'plans', 'reports'].contains(widget.screen)
-          ? FloatingActionButton(
-              shape: const CircleBorder(),
-              backgroundColor: const Color(0xffffe03d),
-              foregroundColor: const Color(0xff073b3b),
-              tooltip: 'Add transaction',
-              onPressed: () => editRecord(context, ledger, 'transaction'),
-              child: const FinIcon('plus'),
+          [
+                'home',
+                'transactions',
+                'plans',
+                'reports',
+              ].contains(widget.screen) &&
+              MediaQuery.viewInsetsOf(context).bottom == 0
+          ? FinPress(
+              child: FloatingActionButton(
+                heroTag: null,
+                shape: const CircleBorder(),
+                backgroundColor: const Color(0xffffe03d),
+                foregroundColor: const Color(0xff073b3b),
+                tooltip: 'Add transaction',
+                onPressed: () => editRecord(context, ledger, 'transaction'),
+                child: const FinIcon('plus'),
+              ),
             )
           : null,
-      bottomNavigationBar: widget.screen == 'account'
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: const Color(0xfffce8e6),
-                    foregroundColor: const Color(0xff9c3030),
-                    side: BorderSide.none,
-                  ),
-                  onPressed: () => act(() async {
-                    if (ledger.queue.isNotEmpty &&
-                        !await confirm(
-                          context,
-                          'Unsynced changes will remain on this device. Sign out?',
-                          title: 'Sign out?',
-                          action: 'Sign out',
-                        )) {
-                      return;
-                    }
-                    await notifications?.logout();
-                    await ledger.logout();
-                  }),
-                  icon: const Icon(Icons.logout_rounded),
-                  label: const Text('Sign out'),
-                ),
-              ),
-            )
-          : SafeArea(
-              top: false,
-              minimum: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: NavigationBar(
-                  selectedIndex: index < 0 ? 0 : index,
-                  onDestinationSelected: (i) => navigateTo(context, routes[i]),
-                  destinations: const [
-                    NavigationDestination(
-                      icon: FinIcon('home'),
-                      selectedIcon: FinIcon('home', color: Color(0xffffffff)),
-                      label: 'Home',
-                    ),
-                    NavigationDestination(
-                      icon: FinIcon('plans'),
-                      selectedIcon: FinIcon('plans', color: Color(0xffffffff)),
-                      label: 'Plans',
-                    ),
-                    NavigationDestination(
-                      icon: FinIcon('activity'),
-                      selectedIcon: FinIcon(
-                        'activity',
-                        color: Color(0xffffffff),
-                      ),
-                      label: 'Activity',
-                    ),
-                    NavigationDestination(
-                      icon: FinIcon('reports'),
-                      selectedIcon: FinIcon(
-                        'reports',
-                        color: Color(0xffffffff),
-                      ),
-                      label: 'Reports',
-                    ),
-                    NavigationDestination(
-                      icon: FinIcon('settings'),
-                      selectedIcon: FinIcon(
-                        'settings',
-                        color: Color(0xffffffff),
-                      ),
-                      label: 'Settings',
-                    ),
-                  ],
-                ),
-              ),
+      bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
+          ? null
+          : FinDock(
+              selected: index < 0 ? 0 : index,
+              onSelected: (i) => navigateTo(context, routes[i]),
             ),
     );
   }
+
+  Widget sectionLayout(List<Widget> sections) => LayoutBuilder(
+    builder: (context, constraints) {
+      Widget column(List<Widget> children) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children
+            .expand((w) => [w, const SizedBox(height: 20)])
+            .toList(),
+      );
+      Widget pair(List<Widget> left, List<Widget> right) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: column(left)),
+          const SizedBox(width: 20),
+          Expanded(child: column(right)),
+        ],
+      );
+      if (constraints.maxWidth < 720) {
+        if (widget.screen == 'reports') {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: sections[0]),
+                  const SizedBox(width: 12),
+                  Expanded(child: sections[1]),
+                ],
+              ),
+              const SizedBox(height: 12),
+              column(sections.sublist(2)),
+            ],
+          );
+        }
+        return column(sections);
+      }
+      if (widget.screen == 'home') {
+        return pair(
+          sections.sublist(0, sections.length - 3),
+          sections.sublist(sections.length - 3),
+        );
+      }
+      if (widget.screen == 'plans') {
+        return Column(
+          children: [
+            pair([sections[0]], [sections[1]]),
+            column(sections.sublist(2)),
+          ],
+        );
+      }
+      if (widget.screen == 'reports') {
+        return Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < 3; i++) ...[
+                  if (i > 0) const SizedBox(width: 12),
+                  Expanded(child: sections[i]),
+                ],
+              ],
+            ),
+            const SizedBox(height: 20),
+            pair([sections[3]], [sections[4]]),
+            column(sections.sublist(5)),
+          ],
+        );
+      }
+      if (widget.screen == 'settings') {
+        return pair(
+          [for (var i = 0; i < sections.length; i += 2) sections[i]],
+          [for (var i = 1; i < sections.length; i += 2) sections[i]],
+        );
+      }
+      return column(sections);
+    },
+  );
+
+  Widget categoryReport(
+    Ledger ledger,
+    Doc category,
+    Data totals,
+    String today,
+  ) {
+    final spent = ledger.active
+        .where(
+          (t) =>
+              t.kind == 'transaction' &&
+              text(t.data, 'type') == 'expense' &&
+              text(t.data, 'categoryId') == category.id &&
+              text(t.data, 'date').compareTo(totals['period']['start']) >= 0 &&
+              text(t.data, 'date').compareTo(totals['period']['end']) < 0 &&
+              text(t.data, 'date').compareTo(today) <= 0,
+        )
+        .fold(0, (v, t) => v + amount(t.data, 'amount'));
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(text(category.data, 'name'))),
+              const SizedBox(width: 12),
+              Text(
+                rupees(spent),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TweenAnimationBuilder<double>(
+            tween: Tween(
+              begin: 0,
+              end: amount(totals, 'expenses') == 0
+                  ? 0
+                  : (spent / amount(totals, 'expenses')).clamp(0, 1),
+            ),
+            duration: reduceMotion(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 240),
+            builder: (context, value, _) => LinearProgressIndicator(
+              value: value,
+              minHeight: 6,
+              borderRadius: BorderRadius.circular(100),
+              color: categoryColor(ledger.active, category.id),
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerLow,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget balanceBreakdown(Data totals) => Material(
+    color: Theme.of(context).colorScheme.surface,
+    borderRadius: BorderRadius.circular(24),
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = MediaQuery.sizeOf(context).width < 375 ? 2 : 3;
+          return Wrap(
+            spacing: 10,
+            runSpacing: 20,
+            children: [
+              for (final item in [
+                ('Current balance', 'balance'),
+                ('Bills reserved', 'commitments'),
+                ('Protected savings', 'savings'),
+              ])
+                SizedBox(
+                  width: (constraints.maxWidth - 10 * (columns - 1)) / columns,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.$1,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        hideBalances
+                            ? '••••••'
+                            : rupees(amount(totals, item.$2)),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: -.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    ),
+  );
 
   Widget quickActions(Ledger ledger) => Row(
     children: [
@@ -1624,7 +1905,26 @@ class _FinScreenState extends ConsumerState<FinScreen>
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Column(
                     children: [
-                      FinIcon(entry.$1),
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: const {
+                            'expense': Color(0xfff2d8c9),
+                            'income': Color(0xffbbddc4),
+                            'plans': Color(0xfff7edc3),
+                            'reports': Color(0xffe1e7f2),
+                          }[entry.$1],
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Center(
+                          child: FinIcon(
+                            entry.$1,
+                            size: 20,
+                            color: const Color(0xff214b43),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Text(entry.$2, style: const TextStyle(fontSize: 12)),
                     ],
@@ -1777,151 +2077,259 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> submit() async {
+    if (busy || !form.currentState!.validate()) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await widget.ledger.login(
+        email.text.trim(),
+        password.text,
+        register: register,
+        name: name.text.trim(),
+      );
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString());
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Widget field(String label, Widget input) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        label,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+      ),
+      const SizedBox(height: 8),
+      input,
+    ],
+  );
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(28),
-            ),
-            child: Form(
-              key: form,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 68,
-                      height: 68,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xfff5ff76), Color(0xffdff2a7)],
+    body: SafeArea(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 448),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      'assets/fintrack-icon.png',
+                      width: 56,
+                      height: 56,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'FinTrack',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Your personal finance tracker',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Material(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: AutofillGroup(
+                      child: Form(
+                        key: form,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  for (final entry in [
+                                    (false, 'Sign In'),
+                                    (true, 'Create Account'),
+                                  ])
+                                    Expanded(
+                                      child: Semantics(
+                                        selected: register == entry.$1,
+                                        child: AnimatedContainer(
+                                          duration: reduceMotion(context)
+                                              ? Duration.zero
+                                              : const Duration(
+                                                  milliseconds: 160,
+                                                ),
+                                          decoration: BoxDecoration(
+                                            color: register == entry.$1
+                                                ? Theme.of(
+                                                    context,
+                                                  ).colorScheme.surface
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          child: TextButton(
+                                            onPressed: busy
+                                                ? null
+                                                : () => setState(() {
+                                                    register = entry.$1;
+                                                    error = null;
+                                                  }),
+                                            child: Text(
+                                              entry.$2,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            if (register) ...[
+                              field(
+                                'Name',
+                                TextFormField(
+                                  controller: name,
+                                  enabled: !busy,
+                                  autofillHints: const [AutofillHints.name],
+                                  decoration: const InputDecoration(
+                                    hintText: 'Your name',
+                                  ),
+                                  validator: (v) => (v ?? '').trim().isEmpty
+                                      ? 'Enter your name'
+                                      : null,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                            field(
+                              'Email',
+                              TextFormField(
+                                controller: email,
+                                enabled: !busy,
+                                keyboardType: TextInputType.emailAddress,
+                                autofillHints: const [AutofillHints.email],
+                                decoration: const InputDecoration(
+                                  hintText: 'you@example.com',
+                                ),
+                                validator: (v) =>
+                                    !RegExp(
+                                      r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                                    ).hasMatch(v ?? '')
+                                    ? 'Enter a valid email'
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            field(
+                              'Password',
+                              TextFormField(
+                                controller: password,
+                                enabled: !busy,
+                                obscureText: obscure,
+                                autofillHints: [
+                                  register
+                                      ? AutofillHints.newPassword
+                                      : AutofillHints.password,
+                                ],
+                                onFieldSubmitted: (_) => submit(),
+                                decoration: InputDecoration(
+                                  hintText: 'Min. 8 characters',
+                                  suffixIcon: IconButton(
+                                    tooltip: obscure
+                                        ? 'Show password'
+                                        : 'Hide password',
+                                    onPressed: () =>
+                                        setState(() => obscure = !obscure),
+                                    icon: Icon(
+                                      obscure
+                                          ? Icons.visibility_outlined
+                                          : Icons.visibility_off_outlined,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                                validator: (v) => (v?.length ?? 0) < 8
+                                    ? 'Use at least 8 characters'
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            if (error != null) ...[
+                              Semantics(
+                                liveRegion: true,
+                                child: Text(
+                                  error!,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                            FinPress(
+                              child: FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xffffe03d),
+                                  foregroundColor: const Color(0xff073b3b),
+                                ),
+                                onPressed: busy ? null : submit,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      busy
+                                          ? 'Please wait...'
+                                          : register
+                                          ? 'Create Account'
+                                          : 'Sign In',
+                                    ),
+                                    if (!busy) ...[
+                                      const SizedBox(width: 8),
+                                      const Icon(Icons.arrow_forward, size: 20),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        borderRadius: BorderRadius.circular(21),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(11),
-                        child: Image.asset(
-                          'assets/fintrack-icon.png',
-                          fit: BoxFit.cover,
-                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'FinTrack',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Plan your bills. Know what you can spend.',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
-                  if (register) ...[
-                    TextFormField(
-                      controller: name,
-                      decoration: const InputDecoration(labelText: 'Name'),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  TextFormField(
-                    controller: email,
-                    keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.email],
-                    decoration: const InputDecoration(labelText: 'Email'),
-                    validator: (v) => v == null || !v.contains('@')
-                        ? 'Enter your email'
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: password,
-                    obscureText: obscure,
-                    autofillHints: const [AutofillHints.password],
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      suffixIcon: IconButton(
-                        onPressed: () => setState(() => obscure = !obscure),
-                        icon: Icon(
-                          obscure
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                        ),
-                      ),
-                    ),
-                    validator: (v) => (v?.length ?? 0) < 8
-                        ? 'Use at least 8 characters'
-                        : null,
-                  ),
-                  const SizedBox(height: 20),
-                  if (error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ),
-                  FilledButton(
-                    onPressed: busy
-                        ? null
-                        : () async {
-                            if (!form.currentState!.validate()) return;
-                            setState(() {
-                              busy = true;
-                              error = null;
-                            });
-                            try {
-                              await widget.ledger.login(
-                                email.text.trim(),
-                                password.text,
-                                register: register,
-                                name: name.text.trim(),
-                              );
-                            } catch (e) {
-                              if (mounted) setState(() => error = e.toString());
-                            } finally {
-                              if (mounted) setState(() => busy = false);
-                            }
-                          },
-                    child: Text(
-                      busy
-                          ? 'Connecting…'
-                          : register
-                          ? 'Create account'
-                          : 'Sign in',
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: busy
-                        ? null
-                        : () => setState(() => register = !register),
-                    child: Text(
-                      register
-                          ? 'Already have an account? Sign in'
-                          : 'Create an account',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Sign in once online. Your saved ledger remains available offline.',
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'data/api.dart';
 import 'data/ledger.dart';
 import 'ui/screens.dart';
+import 'ui/motion.dart';
 
 final ledgerProvider = ChangeNotifierProvider<Ledger>(
   (ref) => Ledger(CloudApi())..initialize(),
@@ -33,9 +34,9 @@ final router = GoRouter(
         ])
           GoRoute(
             path: screen,
-            pageBuilder: (context, state) => NoTransitionPage<void>(
-              key: state.pageKey,
-              child: FinScreen(
+            pageBuilder: (context, state) => finPage(
+              state.pageKey,
+              FinScreen(
                 screen: screen,
                 occurrenceId: state.uri.queryParameters['occurrence'],
               ),
@@ -64,6 +65,12 @@ class FinTrackApp extends ConsumerWidget {
                 : const Color(0xffe6f4e9),
             onPrimaryContainer: dark ? Colors.white : const Color(0xff17372a),
             surface: dark ? const Color(0xff1c3535) : Colors.white,
+            surfaceContainerLow: dark
+                ? const Color(0xff253c3c)
+                : const Color(0xfff0f2e9),
+            surfaceContainerHighest: dark
+                ? const Color(0xff253c3c)
+                : const Color(0xfff0f2e9),
             onSurface: dark ? const Color(0xffedf4ef) : const Color(0xff073b3b),
             onSurfaceVariant: dark
                 ? const Color(0xffafc1b5)
@@ -72,6 +79,31 @@ class FinTrackApp extends ConsumerWidget {
       return ThemeData(
         useMaterial3: true,
         fontFamily: 'Outfit',
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(fontSize: 14, height: 1.45),
+          bodySmall: TextStyle(fontSize: 12, height: 1.4),
+          titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          headlineMedium: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -1.2,
+          ),
+        ),
+        splashFactory: NoSplash.splashFactory,
+        dialogTheme: DialogThemeData(
+          backgroundColor: colors.surface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+        ),
+        chipTheme: ChipThemeData(
+          side: BorderSide.none,
+          showCheckmark: false,
+          selectedColor: colors.primary,
+          backgroundColor: colors.surfaceContainerLow,
+          shape: const StadiumBorder(),
+        ),
         colorScheme: colors,
         scaffoldBackgroundColor: dark
             ? const Color(0xff142929)
@@ -85,24 +117,31 @@ class FinTrackApp extends ConsumerWidget {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: dark ? const Color(0xff25332c) : const Color(0xfff0f2e9),
+          fillColor: dark ? const Color(0xff253c3c) : const Color(0xfff0f2e9),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
           ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(100),
+            borderSide: BorderSide(
+              color: colors.primary.withValues(alpha: .5),
+              width: 2,
+            ),
+          ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(100),
             borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(100),
             borderSide: BorderSide.none,
           ),
         ),
         cardTheme: CardThemeData(
           margin: EdgeInsets.zero,
           elevation: 0,
-          color: dark ? const Color(0xff1e2a24) : Colors.white,
+          color: dark ? const Color(0xff1c3535) : Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
@@ -110,14 +149,16 @@ class FinTrackApp extends ConsumerWidget {
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             minimumSize: const Size(0, 48),
+            backgroundColor: colors.primary,
+            foregroundColor: colors.onPrimary,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(100),
             ),
             textStyle: const TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
         navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: dark ? const Color(0xff1e2a24) : Colors.white,
+          backgroundColor: dark ? const Color(0xff1c3535) : Colors.white,
           indicatorColor: colors.primary,
           elevation: 0,
           height: 74,
