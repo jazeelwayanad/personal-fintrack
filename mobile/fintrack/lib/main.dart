@@ -119,8 +119,8 @@ class FinTrackApp extends ConsumerWidget {
           filled: true,
           fillColor: dark ? const Color(0xff253c3c) : const Color(0xfff0f2e9),
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
+            horizontal: 20,
+            vertical: 18,
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(100),

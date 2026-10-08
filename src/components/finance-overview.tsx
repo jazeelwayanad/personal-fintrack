@@ -2,10 +2,10 @@
 
 import Image from 'next/image';
 
-import { useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { ArrowDownLeft, ArrowUpRight, CalendarDays, ChartColumn, Eye, EyeOff, ShieldCheck, ChevronDown } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, CalendarDays, ChartColumn, ShieldCheck, ChevronDown } from 'lucide-react';
 import { rupees, summary } from '@/lib/finance/engine';
 
 type Totals = ReturnType<typeof summary>;
@@ -14,17 +14,16 @@ export function FinanceOverview({ totals, period, budgets, payments, activity, s
 }) {
   const { data: session } = useSession();
   const firstName = session?.user?.name?.trim().split(/\s+/)[0];
-  const [hidden, setHidden] = useState(false);
-  const money = (amount: number) => hidden ? '••••••' : rupees(amount);
+  const money = rupees;
   return <>
-    <div className="fin-overview-heading"><div><h1>{firstName ? `Hello, ${firstName}.` : 'Welcome back.'}</h1><p className="text-sm text-muted-foreground">Let’s make room for what matters.</p></div><div className="fin-segment"><span aria-current="page">Overview</span><Link href="/plans#budgets">Budgets</Link></div></div>
+    <div className="fin-overview-heading"><div><h1>{firstName ? `Hello, ${firstName}.` : 'Welcome back.'}</h1><p className="text-sm text-muted-foreground">Let’s make room for what matters.</p></div></div>
     <div className="fin-overview-grid">
       <div className="fin-overview-column">
         <section className="fin-credit-card" aria-label="Available credit">
-          <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-normal">Available credit</h2><button aria-label={hidden ? 'Show balances' : 'Hide balances'} aria-pressed={hidden} onClick={() => setHidden(v => !v)} className="grid size-11 place-items-center rounded-full bg-white/10">{hidden ? <EyeOff size={18}/> : <Eye size={18}/>}</button></div>
+          <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-normal">Available credit</h2></div>
           <p className="fin-credit-amount">{money(totals.unallocated)}<span>INR</span></p>
           <p className="fin-credit-definition">After bills, savings & category reserves</p>
-          <div className="fin-credit-footer"><span><CalendarDays size={15}/>{period}</span><span><ShieldCheck size={15}/>Planned, not guessed</span></div>
+          <div className="fin-credit-footer"><span><CalendarDays size={15}/>{period}</span></div>
         </section>
         <div className="fin-quick-actions" aria-label="Quick actions">
           <button onClick={() => add('expense')}><span className="fin-icon-peach"><ArrowUpRight size={20}/></span>Expense</button>

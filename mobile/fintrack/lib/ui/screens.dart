@@ -196,7 +196,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
                                   'id': id,
                                   'topic': topic,
                                   'message': message.text,
-                                  'appVersion': '1.2.1',
+                                  'appVersion': '1.2.2',
                                 },
                               );
                               if (context.mounted) update(() => sent = true);
@@ -225,7 +225,6 @@ class _FinScreenState extends ConsumerState<FinScreen>
       checkCategory = '';
   final checkController = TextEditingController();
   String search = '', forecastMonth = todayIndia().substring(0, 7);
-  bool hideBalances = false;
   PushNotifications? notifications;
   @override
   void initState() {
@@ -353,20 +352,11 @@ class _FinScreenState extends ConsumerState<FinScreen>
                 ),
               ),
             ),
-            if (hero)
-              IconButton.filled(
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: .1),
-                ),
-                tooltip: hideBalances ? 'Show balance' : 'Hide balance',
-                onPressed: () => setState(() => hideBalances = !hideBalances),
-                icon: const FinIcon('eye', color: Colors.white),
-              ),
           ],
         ),
         const SizedBox(height: 12),
         Text(
-          hideBalances ? '••••' : rupees(value),
+          rupees(value),
           style: TextStyle(
             fontSize: hero ? 40 : 24,
             fontWeight: FontWeight.w600,
@@ -1226,7 +1216,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
     if (widget.screen == 'settings') {
       sections.add(
         panel('About FinTrack', [
-          const Text('Version 1.2.1'),
+          const Text('Version 1.2.2'),
           const SizedBox(height: 8),
           TextButton(
             onPressed: () => openDeveloperLink('https://eucodes.in/'),
@@ -1597,50 +1587,11 @@ class _FinScreenState extends ConsumerState<FinScreen>
                   ),
                 ],
               ),
-            if (widget.screen == 'home') ...[
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                        child: const Text(
-                          'Overview',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => navigateTo(context, '/plans'),
-                        child: const Text(
-                          'Budgets',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
             const SizedBox(height: 24),
             sectionLayout(sections),
             const Center(
               child: Text(
-                'FinTrack v1.2.1 · Developed by Eucodes',
+                'FinTrack v1.2.2 · Developed by Eucodes',
                 style: TextStyle(fontSize: 12, color: Color(0xff657672)),
               ),
             ),
@@ -1842,9 +1793,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        hideBalances
-                            ? '••••••'
-                            : rupees(amount(totals, item.$2)),
+                        rupees(amount(totals, item.$2)),
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w500,

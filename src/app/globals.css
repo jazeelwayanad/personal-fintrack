@@ -131,7 +131,7 @@
 .fin-credit-definition { font-size: 12px; color: #c6dcd5; margin-top: 10px; }
 .fin-credit-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 26px; font-size: 11px; color: #c6dcd5; }
 .fin-credit-footer span { display: inline-flex; align-items: center; gap: 7px; }
-.fin-credit-footer span:last-child { color: #e1ea9e; }
+.fin-credit-footer span + span { color: #e1ea9e; }
 .fin-quick-actions { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; }
 .fin-quick-actions > * { display: flex; justify-content: center; align-items: center; gap: 9px; padding: 12px 8px; background: var(--card); border-radius: 20px; font-size: 12px; font-weight: 500; }
 .fin-quick-actions span, .fin-payment-icon, .fin-spending summary > span:first-child { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; flex-shrink: 0; color: #214b43; }
@@ -174,7 +174,7 @@ body:has([role=dialog]) .fin-add-transaction { visibility: hidden; }
 }
 @media (max-width: 1000px) {
   .fin-quick-actions > * { flex-direction: column; }
-  .fin-credit-footer span:last-child { display: none; }
+  .fin-credit-footer span + span { display: none; }
   .fin-supporting-totals { padding: 20px; gap: 12px; }
 }
 @media (max-width: 767px) {

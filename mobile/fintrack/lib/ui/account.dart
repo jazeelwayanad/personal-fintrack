@@ -498,7 +498,7 @@ class _AccountScreenState extends State<AccountScreen> {
                         ),
                         const SizedBox(height: 32),
                         const Text(
-                          'FinTrack v1.2.1 · Developed by Eucodes',
+                          'FinTrack v1.2.2 · Developed by Eucodes',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 12),
                         ),

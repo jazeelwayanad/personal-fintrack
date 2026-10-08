@@ -6,7 +6,7 @@ import { useFinance } from './finance-provider';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 import { useConfirm } from './confirm-dialog';
-export const inputClass = 'w-full min-w-0 rounded-2xl border-0 bg-muted px-4 py-3 text-sm';
+export const inputClass = 'w-full min-w-0 rounded-2xl border-0 bg-muted px-5 py-3.5 min-h-13 text-sm';
 export const buttonClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#ffe03d] px-5 py-3 text-sm font-semibold text-[#073b3b] hover:opacity-90 disabled:opacity-50';
 export function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="grid gap-1.5 text-sm font-medium">{label}{children}</label>; }
 export function Editor({ kind, initial, close, occurrenceId }: { kind: Kind; initial?: Document; close: () => void; occurrenceId?: string }) {
