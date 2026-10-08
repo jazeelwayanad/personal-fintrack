@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'navigation.dart';
 import 'patterns.dart';
+import 'updates.dart';
+import '../data/updates.dart';
 import 'package:intl/intl.dart';
 import 'account.dart';
 import 'package:uuid/uuid.dart';
@@ -195,7 +197,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
                                   'id': id,
                                   'topic': topic,
                                   'message': message.text,
-                                  'appVersion': '1.2.2',
+                                  'appVersion': appVersion,
                                 },
                               );
                               if (context.mounted) update(() => sent = true);
@@ -786,6 +788,10 @@ class _FinScreenState extends ConsumerState<FinScreen>
         panel('Can I spend this?', [
           ExpansionTile(
             key: const PageStorageKey('spending-allowance-expanded'),
+            shape: const Border(),
+            collapsedShape: const Border(),
+            expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+            childrenPadding: const EdgeInsets.only(top: 16),
             tilePadding: EdgeInsets.zero,
             leading: Container(
               width: 42,
@@ -812,6 +818,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
             ),
             children: [
               TextField(
+                key: const PageStorageKey('spending-check-amount-scroll'),
                 controller: checkController,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
@@ -1223,7 +1230,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
     if (widget.screen == 'settings') {
       sections.add(
         panel('About FinTrack', [
-          const Text('Version 1.2.2'),
+          const UpdateSettings(),
           const SizedBox(height: 8),
           TextButton(
             onPressed: () => openDeveloperLink('https://eucodes.in/'),
@@ -1592,7 +1599,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
             sectionLayout(sections),
             const Center(
               child: Text(
-                'FinTrack v1.2.2 · Developed by Eucodes',
+                'FinTrack v$appVersion · Developed by Eucodes',
                 style: TextStyle(fontSize: 12, color: Color(0xff657672)),
               ),
             ),

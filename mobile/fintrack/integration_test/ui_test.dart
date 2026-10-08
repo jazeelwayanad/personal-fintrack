@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import 'package:flutter/services.dart';
 import 'package:fintrack/ui/profile_photo.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:fintrack/main.dart';
+import 'package:fintrack/ui/screens.dart';
 import 'package:fintrack/data/api.dart';
 import 'package:fintrack/data/database.dart';
 import 'package:fintrack/data/ledger.dart';
@@ -141,6 +143,18 @@ void main() {
     await binding.convertFlutterSurfaceToImage();
     await tester.pumpAndSettle();
     await capture(tester, 'home');
+    await tester.ensureVisible(find.text('Can I spend this?'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Can I spend this?'));
+    await tester.pumpAndSettle();
+    final spendingAmount = find.widgetWithText(TextField, 'Amount (₹)');
+    expect(tester.getSize(spendingAmount).height, lessThan(90));
+    await tester.ensureVisible(spendingAmount);
+    await tester.enterText(spendingAmount, '250');
+    await SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await capture(tester, 'spending-check');
     await tester.tap(find.text('Plans').last);
     await tester.pumpAndSettle();
     await capture(tester, 'plans');
@@ -160,6 +174,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Scheduled income and expenses'), findsOneWidget);
     await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(tester.widget<FinScreen>(find.byType(FinScreen)).screen, 'home');
+    await tester.drag(find.byType(ListView).first, const Offset(0, 3000));
     await tester.pumpAndSettle();
     expect(find.text('Hello, UI test ledger.'), findsOneWidget);
     for (var i = 0; i < 12 && find.text('Mark paid').evaluate().isEmpty; i++) {

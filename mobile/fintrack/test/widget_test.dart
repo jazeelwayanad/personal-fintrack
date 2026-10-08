@@ -170,6 +170,53 @@ void main() {
     }
   });
 
+  testWidgets('expanded spending check stays compact and accepts an amount', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 800);
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final api = CloudApi()
+      ..session = {
+        'user': {'id': 'spending-layout'},
+      };
+    final ledger = Ledger(api)..loading = false;
+    ledger.records = [
+      Doc('category', 'category', {
+        'name': 'Shopping',
+        'type': 'expense',
+        'color': '#2563EB',
+      }),
+    ];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [ledgerProvider.overrideWith((ref) => ledger)],
+        child: const FinTrackApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Can I spend this?'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Can I spend this?'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Can I spend this?'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    final amount = find.widgetWithText(TextField, 'Amount (₹)');
+    expect(tester.getSize(amount).height, lessThan(90));
+    await tester.ensureVisible(amount);
+    await tester.enterText(amount, '250');
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('delete confirmation uses the custom sheet and honors cancel', (
     tester,
   ) async {

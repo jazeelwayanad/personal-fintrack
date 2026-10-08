@@ -1,3 +1,4 @@
+import '../data/updates.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -498,7 +499,7 @@ class _AccountScreenState extends State<AccountScreen> {
                         ),
                         const SizedBox(height: 32),
                         const Text(
-                          'FinTrack v1.2.2 · Developed by Eucodes',
+                          'FinTrack v$appVersion · Developed by Eucodes',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 12),
                         ),
