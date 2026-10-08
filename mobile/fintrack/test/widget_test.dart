@@ -65,6 +65,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(FinScreen), findsOneWidget);
     expect(find.text('Scheduled income and expenses'), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_back_rounded), findsNothing);
     await tester.tap(find.text('Plans').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Activity').last);
@@ -73,6 +74,7 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.text('Scheduled income and expenses'), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_back_rounded), findsNothing);
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.text('Hello, there.'), findsOneWidget);

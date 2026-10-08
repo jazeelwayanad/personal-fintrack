@@ -52,7 +52,12 @@ class BrandLoading extends StatelessWidget {
           const SizedBox(height: 24),
           Text(label),
           const SizedBox(height: 20),
-          const SizedBox(width: 100, child: LinearProgressIndicator()),
+          SizedBox(
+            width: 100,
+            child: LinearProgressIndicator(
+              value: MediaQuery.disableAnimationsOf(context) ? 1 : null,
+            ),
+          ),
         ],
       ),
     ),
@@ -99,10 +104,7 @@ class FinDock extends StatelessWidget {
               Expanded(
                 child: Semantics(
                   selected: selected == entry.key,
-                  child: AnimatedContainer(
-                    duration: MediaQuery.disableAnimationsOf(context)
-                        ? Duration.zero
-                        : const Duration(milliseconds: 160),
+                  child: Container(
                     decoration: BoxDecoration(
                       color: selected == entry.key
                           ? const Color(0xff073b3b)

@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'navigation.dart';
 import 'patterns.dart';
-import 'motion.dart';
 import 'package:intl/intl.dart';
 import 'account.dart';
 import 'package:uuid/uuid.dart';
@@ -1404,14 +1403,8 @@ class _FinScreenState extends ConsumerState<FinScreen>
     }
     return Scaffold(
       appBar: AppBar(
-        leading: widget.screen != 'home'
-            ? IconButton(
-                onPressed: () => navigateBack(context),
-                icon: const Icon(Icons.arrow_back_rounded),
-                tooltip: 'Back to home',
-              )
-            : null,
-        titleSpacing: widget.screen == 'home' ? 16 : 0,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
         toolbarHeight: 64,
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1606,16 +1599,14 @@ class _FinScreenState extends ConsumerState<FinScreen>
                 'reports',
               ].contains(widget.screen) &&
               MediaQuery.viewInsetsOf(context).bottom == 0
-          ? FinPress(
-              child: FloatingActionButton(
-                heroTag: null,
-                shape: const CircleBorder(),
-                backgroundColor: const Color(0xffffe03d),
-                foregroundColor: const Color(0xff073b3b),
-                tooltip: 'Add transaction',
-                onPressed: () => editRecord(context, ledger, 'transaction'),
-                child: const FinIcon('plus'),
-              ),
+          ? FloatingActionButton(
+              heroTag: null,
+              shape: const CircleBorder(),
+              backgroundColor: const Color(0xffffe03d),
+              foregroundColor: const Color(0xff073b3b),
+              tooltip: 'Add transaction',
+              onPressed: () => editRecord(context, ledger, 'transaction'),
+              child: const FinIcon('plus'),
             )
           : null,
       bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
@@ -1737,25 +1728,14 @@ class _FinScreenState extends ConsumerState<FinScreen>
             ],
           ),
           const SizedBox(height: 8),
-          TweenAnimationBuilder<double>(
-            tween: Tween(
-              begin: 0,
-              end: amount(totals, 'expenses') == 0
-                  ? 0
-                  : (spent / amount(totals, 'expenses')).clamp(0, 1),
-            ),
-            duration: reduceMotion(context)
-                ? Duration.zero
-                : const Duration(milliseconds: 240),
-            builder: (context, value, _) => LinearProgressIndicator(
-              value: value,
-              minHeight: 6,
-              borderRadius: BorderRadius.circular(100),
-              color: categoryColor(ledger.active, category.id),
-              backgroundColor: Theme.of(
-                context,
-              ).colorScheme.surfaceContainerLow,
-            ),
+          LinearProgressIndicator(
+            value: amount(totals, 'expenses') == 0
+                ? 0
+                : (spent / amount(totals, 'expenses')).clamp(0, 1),
+            minHeight: 6,
+            borderRadius: BorderRadius.circular(100),
+            color: categoryColor(ledger.active, category.id),
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
           ),
         ],
       ),
@@ -2127,12 +2107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     Expanded(
                                       child: Semantics(
                                         selected: register == entry.$1,
-                                        child: AnimatedContainer(
-                                          duration: reduceMotion(context)
-                                              ? Duration.zero
-                                              : const Duration(
-                                                  milliseconds: 160,
-                                                ),
+                                        child: Container(
                                           decoration: BoxDecoration(
                                             color: register == entry.$1
                                                 ? Theme.of(
@@ -2247,29 +2222,27 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(height: 12),
                             ],
-                            FinPress(
-                              child: FilledButton(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xffffe03d),
-                                  foregroundColor: const Color(0xff073b3b),
-                                ),
-                                onPressed: busy ? null : submit,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      busy
-                                          ? 'Please wait...'
-                                          : register
-                                          ? 'Create Account'
-                                          : 'Sign In',
-                                    ),
-                                    if (!busy) ...[
-                                      const SizedBox(width: 8),
-                                      const Icon(Icons.arrow_forward, size: 20),
-                                    ],
+                            FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xffffe03d),
+                                foregroundColor: const Color(0xff073b3b),
+                              ),
+                              onPressed: busy ? null : submit,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    busy
+                                        ? 'Please wait...'
+                                        : register
+                                        ? 'Create Account'
+                                        : 'Sign In',
+                                  ),
+                                  if (!busy) ...[
+                                    const SizedBox(width: 8),
+                                    const Icon(Icons.arrow_forward, size: 20),
                                   ],
-                                ),
+                                ],
                               ),
                             ),
                           ],

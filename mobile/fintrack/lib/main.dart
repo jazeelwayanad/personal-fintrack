@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'data/api.dart';
 import 'data/ledger.dart';
 import 'ui/screens.dart';
-import 'ui/motion.dart';
 
 final ledgerProvider = ChangeNotifierProvider<Ledger>(
   (ref) => Ledger(CloudApi())..initialize(),
@@ -34,9 +33,9 @@ final router = GoRouter(
         ])
           GoRoute(
             path: screen,
-            pageBuilder: (context, state) => finPage(
-              state.pageKey,
-              FinScreen(
+            pageBuilder: (context, state) => NoTransitionPage<void>(
+              key: state.pageKey,
+              child: FinScreen(
                 screen: screen,
                 occurrenceId: state.uri.queryParameters['occurrence'],
               ),
