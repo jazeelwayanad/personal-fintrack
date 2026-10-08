@@ -1051,7 +1051,15 @@ class _FinScreenState extends ConsumerState<FinScreen>
           TextField(
             decoration: const InputDecoration(
               labelText: 'Search transactions',
-              prefixIcon: FinIcon('activity'),
+              prefixIcon: SizedBox(
+                width: 48,
+                height: 48,
+                child: Center(child: Icon(Icons.search_rounded, size: 22)),
+              ),
+              prefixIconConstraints: BoxConstraints.tightFor(
+                width: 48,
+                height: 48,
+              ),
             ),
             onChanged: (value) =>
                 setState(() => search = value.trim().toLowerCase()),
