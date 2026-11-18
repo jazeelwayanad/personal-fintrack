@@ -1,6 +1,6 @@
 import { lockLedger } from './sync';
 import { Prisma } from '@prisma/client';
-import { accountAttempt, authenticate, credentials } from './credentials';
+import { accountAttempt, authenticate, credentials, readSessionUser } from './credentials';
 import { createHash, randomBytes } from 'node:crypto';
 import { SignJWT, jwtVerify } from 'jose';
 import bcrypt from 'bcryptjs';
@@ -37,8 +37,8 @@ export async function login(input: unknown, register: boolean, req?: Request) {
   const refreshToken = randomBytes(48).toString('base64url');
   const session = await prisma.$transaction(async tx => {
     await lockLedger(tx, user.id);
-    const current = await tx.user.findUniqueOrThrow({ where: { id: user.id }, select: { sessionVersion: true } });
-    if (current.sessionVersion !== user.sessionVersion) throw new ApiError(401, 'Please sign in again.');
+    const current = await readSessionUser(user.id, tx);
+    if (current?.sessionVersion !== user.sessionVersion) throw new ApiError(401, 'Please sign in again.');
     return tx.mobileSession.create({ data: { userId: user.id, refreshHash: hash(refreshToken), expiresAt: new Date(Date.now() + 30 * 86400000) } });
   });
   return { accessToken: await access(user.id, session.id), refreshToken, user: { id: user.id, email: user.email, name: user.name } };

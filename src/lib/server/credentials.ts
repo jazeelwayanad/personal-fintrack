@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { isIP } from 'node:net';
 import bcrypt from 'bcryptjs';
+import { Prisma, type User } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { ApiError } from './api-error';
@@ -33,11 +34,28 @@ export async function accountAttempt(email: string, req?: Request) {
   return key;
 }
 
+type Identity = Pick<User, 'id' | 'email' | 'name' | 'sessionVersion'>;
+type CredentialUser = Identity & Pick<User, 'password'>;
+
+// Read version zero on databases deployed before the session revocation migration.
+const identityColumns = Prisma.sql`u."id", u."email", u."name",
+  COALESCE((to_jsonb(u)->>'sessionVersion')::integer, 0) AS "sessionVersion"`;
+
+export async function readSessionUser(userId: string, db: Pick<Prisma.TransactionClient, '$queryRaw'> = prisma) {
+  const [user] = await db.$queryRaw<Identity[]>`
+    SELECT ${identityColumns} FROM "User" u WHERE u."id" = ${userId}
+  `;
+  return user ?? null;
+}
+
 export async function findCredentialUser(email: string, presented = email) {
+  const query = (where: Prisma.Sql) => prisma.$queryRaw<CredentialUser[]>`
+    SELECT ${identityColumns}, u."password" FROM "User" u WHERE ${where} LIMIT 2
+  `;
   // Preserve access to older mixed-case addresses while refusing ambiguous matches.
-  const exact = await prisma.user.findUnique({ where: { email: presented } });
+  const [exact] = await query(Prisma.sql`u."email" = ${presented}`);
   if (exact) return exact;
-  const candidates = await prisma.user.findMany({ where: { email: { equals: email, mode: 'insensitive' } }, take: 2 });
+  const candidates = await query(Prisma.sql`lower(u."email") = ${email}`);
   return candidates.length === 1 ? candidates[0] : null;
 }
 

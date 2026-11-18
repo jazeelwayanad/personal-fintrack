@@ -1,5 +1,6 @@
 import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import bcrypt from 'bcryptjs';
 vi.mock('@/auth', () => ({ auth: async () => null }));
 const enabled = process.env.RUN_DATABASE_TESTS === '1';
 describe.skipIf(!enabled)('PostgreSQL sync and mobile authentication', () => {
@@ -42,5 +43,20 @@ describe.skipIf(!enabled)('PostgreSQL sync and mobile authentication', () => {
     await expect(sync.push(other.id, { id: randomUUID(), changes: [change(cat, 'category', { name: 'Stolen', type: 'expense', color: '#123456' })] })).rejects.toThrow('another account');
     expect((await prisma.category.findUniqueOrThrow({ where: { id: cat } })).name).toBe('Bills');
     await expect(sync.push(userId, { id: randomUUID(), changes: [change(randomUUID(), 'transaction', { type: 'expense', amount: 100, categoryId: 'missing', paymentMethodId: method, date: '2026-10-10' })] })).rejects.toThrow('valid category');
+  });
+  it('signs in an existing account with a stored bcrypt password', async () => {
+    const existingEmail = 'Legacy-' + randomUUID() + '@example.test';
+    const password = 'existing-account-password';
+    const id = randomUUID();
+    const hash = await bcrypt.hash(password, 4);
+    await prisma.$executeRaw`
+      INSERT INTO "User" ("id", "email", "password", "updatedAt") VALUES (${id}, ${existingEmail}, ${hash}, now())
+    `;
+    users.push(id);
+    const { authenticate, readSessionUser } = await import('../src/lib/server/credentials');
+    expect(await authenticate({ email: existingEmail.toLowerCase(), password })).toMatchObject({ id: id, sessionVersion: 0 });
+    expect(await readSessionUser(id)).toMatchObject({ id: id, sessionVersion: 0 });
+    const session = await auth.login({ email: existingEmail, password }, false);
+    expect(session.user.id).toBe(id);
   });
 });
