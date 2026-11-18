@@ -4,7 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { checkSpending, monthlyForecast, occurrences, summary, todayIndia } from '@/lib/finance/engine';
-import { dateSchema, type Document, number as n, string as s } from '@/lib/finance/model';
+import { dateSchema, kinds, type Document, type Mutation, number as n, string as s } from '@/lib/finance/model';
 import { ApiError } from './api-error';
 import { fingerprint, secretKey } from './integration-secret';
 import { readCursor, signCursor } from './cursor';
@@ -85,7 +85,7 @@ function audit(grant: McpGrant, operation: string, outcome: string, objectId?: s
   return { userId: grant.userId, clientId: grant.clientId, grantId: grant.id, operation, outcome, objectId };
 }
 
-export const writeTools = new Set(['create_transaction', 'update_transaction']);
+export const writeTools = new Set(['create_transaction', 'update_transaction', 'delete_ledger_record']);
 const patch = z.strictObject({ categoryId: id.optional(), paymentMethodId: id.optional(), description: z.string().max(1000).optional() });
 const create = z.strictObject({
   idempotencyKey: z.uuid(), date: dateSchema, type, amountPaise: positivePaise,
@@ -94,8 +94,9 @@ const create = z.strictObject({
 const update = z.strictObject({
   idempotencyKey: z.uuid(), id, expectedRevision: z.number().int().positive(), patch,
 }).refine(value => Object.keys(value.patch).length > 0, 'Supply at least one field to update.');
+const remove = z.strictObject({ idempotencyKey: z.uuid(), id, expectedRevision: z.number().int().positive() });
 
-async function writeTransaction(grant: McpGrant, operation: string, input: z.infer<typeof create> | z.infer<typeof update>) {
+async function writeTransaction(grant: McpGrant, operation: string, input: z.infer<typeof create> | z.infer<typeof update> | z.infer<typeof remove>) {
   const { userId } = grant;
   const requestHash = fingerprint(secretKey(process.env.MCP_STATE_KEY), input);
   const mutationId = 'mcp:' + createHash('sha256').update(JSON.stringify([userId, grant.id, operation, input.idempotencyKey])).digest('hex');
@@ -109,21 +110,22 @@ async function writeTransaction(grant: McpGrant, operation: string, input: z.inf
       return saved.response;
     }
 
-    let change;
-    if ('patch' in input) {
-      const row = await tx.financialRecord.findFirst({ where: { userId, id: input.id, kind: 'transaction', deleted: false } });
-      if (!row) throw new ApiError(404, 'Transaction not found.');
-      if (s(wire(row).data, 'date') > todayIndia()) throw new ApiError(400, 'Use a plan for future income or expenses.');
-      if (row.revision !== input.expectedRevision) throw new ApiError(409, 'Transaction changed. Read it again before updating.');
-      if (s(wire(row).data, 'occurrenceId') || await tx.upiPaymentAttempt.findUnique({ where: { userId_ledgerId: { userId, ledgerId: row.id } }, select: { id: true } })) {
+    let change: Mutation['changes'][number];
+    const deleting = operation === 'delete_ledger_record';
+    if ('id' in input) {
+      const row = await tx.financialRecord.findFirst({ where: { userId, id: input.id, ...(!deleting && { kind: 'transaction' }), deleted: false } });
+      if (!row) throw new ApiError(404, 'Record not found.');
+      if (!deleting && s(wire(row).data, 'date') > todayIndia()) throw new ApiError(400, 'Use a plan for future income or expenses.');
+      if (row.revision !== input.expectedRevision) throw new ApiError(409, 'Record changed. Read it again before changing it.');
+      if (row.kind === 'transaction' && (s(wire(row).data, 'occurrenceId') || await tx.upiPaymentAttempt.findUnique({ where: { userId_ledgerId: { userId, ledgerId: row.id } }, select: { id: true } }))) {
         throw new ApiError(409, 'Edit linked payments in FinTrack.');
       }
-      change = { id: row.id, kind: 'transaction', baseRevision: row.revision, data: { ...wire(row).data, ...input.patch } };
+      change = { ...wire(row), baseRevision: row.revision, data: { ...wire(row).data, ...('patch' in input ? input.patch : {}) }, deleted: deleting };
     } else {
       if (input.date > todayIndia()) throw new ApiError(400, 'Choose a date on or before today.');
       const { date, type, amountPaise, categoryId, paymentMethodId, description } = input;
       change = {
-        id: mutationId, kind: 'transaction', baseRevision: 0,
+        id: mutationId, kind: 'transaction', baseRevision: 0, deleted: false,
         data: { date, type, amount: amountPaise, categoryId, paymentMethodId, description },
       };
     }
@@ -131,7 +133,9 @@ async function writeTransaction(grant: McpGrant, operation: string, input: z.inf
     const mutation = await applyLedgerMutation(tx, userId, { id: mutationId, changes: [change] });
     if (!mutation.accepted) throw new ApiError(409, 'The transaction changed.');
     const [record] = mutation.records;
-    const response = 'patch' in input
+    const response = deleting
+      ? { id: record.id, kind: record.kind, revision: record.revision, deleted: true }
+      : 'patch' in input
       ? { id: record.id, revision: record.revision, categoryId: s(record.data, 'categoryId'), paymentMethodId: s(record.data, 'paymentMethodId'), source: 'manual' }
       : { id: record.id, revision: record.revision, date: s(record.data, 'date'), type: s(record.data, 'type'), amountPaise: n(record.data, 'amount'), source: 'manual' };
     await tx.syncMutation.update({ where: { userId_id: { userId, id: mutationId } }, data: { result: { requestHash, response } } });
@@ -148,7 +152,7 @@ export function financeMcpServer(grant: McpGrant, write: boolean, payments = fal
     const readOnly = !writeTools.has(name);
     server.registerTool<z.ZodObject, z.ZodObject>(name, {
       description, inputSchema, outputSchema,
-      annotations: { readOnlyHint: readOnly, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      annotations: { readOnlyHint: readOnly, destructiveHint: name === 'delete_ledger_record', idempotentHint: true, openWorldHint: false },
     }, async (raw: unknown) => {
       try {
         const scope = name === 'list_upi_attempts' ? paymentsScope : readScope;
@@ -168,6 +172,19 @@ export function financeMcpServer(grant: McpGrant, write: boolean, payments = fal
   tool('list_ledger_options', 'Find your income and expense categories and payment methods.', z.strictObject({ type: type.optional() }), optionOutput, async input => {
     const { records, syncedAt } = await readLedger(grant.userId);
     return { ...ledgerOptions(records, input.type), syncedAt };
+  });
+  tool('list_ledger_records', 'Find synced ledger records of any kind, with IDs and revisions needed before deletion. Amounts in record data are in paise.', z.strictObject({
+    kind: z.enum(kinds).optional(), limit: z.number().int().min(1).max(100).default(25), cursor: z.string().max(1000).optional(),
+  }), page(z.strictObject({ id, kind: z.enum(kinds), revision: z.number().int(), data: z.record(z.string(), z.unknown()) })), async input => {
+    await ensureImported(grant.userId);
+    const context = { userId: grant.userId, operation: 'ledger-records', filter: { kind: input.kind, limit: input.limit } };
+    const after = input.cursor ? readCursor(input.cursor, id, context) : undefined;
+    const rows = await prisma.financialRecord.findMany({
+      where: { userId: grant.userId, deleted: false, ...(input.kind && { kind: input.kind }), ...(after && { id: { gt: after } }) },
+      orderBy: { id: 'asc' }, take: input.limit + 1,
+    });
+    const items = rows.slice(0, input.limit).map(row => ({ id: row.id, kind: row.kind, revision: row.revision, data: row.data }));
+    return { items, nextCursor: rows.length > input.limit ? signCursor(items.at(-1)!.id, context) : null, syncedAt: new Date().toISOString() };
   });
   tool('list_transactions', 'Search synced entries within an inclusive start and exclusive end, up to 366 days.', z.strictObject({
     ...windowFields, type: type.optional(), categoryId: id.optional(), paymentMethodId: id.optional(),
@@ -272,6 +289,9 @@ export function financeMcpServer(grant: McpGrant, write: boolean, payments = fal
     tool('update_transaction', 'Correct the classification or note on an unlinked manual transaction.', update, z.strictObject({
       id, revision: z.number().int(), categoryId: id, paymentMethodId: id, source: z.literal('manual'),
     }), input => writeTransaction(grant, 'update_transaction', input));
+    tool('delete_ledger_record', 'Delete one ledger record after explicit user confirmation. First read its ID and revision with list_ledger_records. Preserves a sync tombstone and audit history. Rejects records still in use, plans with payment history, and linked payment transactions. Does not move money.', remove, z.strictObject({
+      id, kind: z.enum(kinds), revision: z.number().int(), deleted: z.literal(true),
+    }), input => writeTransaction(grant, 'delete_ledger_record', input));
   }
 
   for (const kind of ['categories', 'paymentMethods'] as const) {
