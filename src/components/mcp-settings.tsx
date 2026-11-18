@@ -77,13 +77,13 @@ export function McpSettings({ linkFailed }: { linkFailed: boolean }) {
           <option value="">Choose a connector</option>
           {settings.clients.map(id => <option key={id} value={id}>{id}</option>)}
         </select></Field>
-        {settings.writesEnabled && <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={write} onChange={event => setWrite(event.target.checked)}/>Allow this connector to record and reclassify manual ledger entries.</label>}
+        {settings.writesEnabled && <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={write} onChange={event => setWrite(event.target.checked)}/>Allow this connector to create or reclassify manual transactions and delete ledger records.</label>}
         {settings.paymentsEnabled && <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={payments} onChange={event => setPayments(event.target.checked)}/>Allow access to payment attempt history and evidence status.</label>}
         <button className={buttonClass} disabled={busy || !client}>Save connector access</button>
       </form>
       <ul className="space-y-2">
         {settings.grants.map(grant => <li key={grant.id} className="flex flex-wrap items-center justify-between gap-2 border-t py-2 text-sm">
-          <span className="break-all">{grant.clientId} · {grant.scopes.includes('ledger:write') ? 'Read and write' : 'Read only'}{grant.scopes.includes('payments:read') ? ' · Payment history' : ''}</span>
+          <span className="break-all">{grant.clientId} · {grant.scopes.includes('ledger:write') ? 'Read, write and delete' : 'Read only'}{grant.scopes.includes('payments:read') ? ' · Payment history' : ''}</span>
           <button type="button" className="min-h-11 px-3 text-destructive" disabled={busy} onClick={() => void change({ action: 'revoke', grantId: grant.id })}>Revoke access</button>
         </li>)}
       </ul>
