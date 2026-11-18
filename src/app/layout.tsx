@@ -8,7 +8,7 @@ import { AuthProvider } from "@/components/auth-provider";
 
 const outfit = localFont({
   variable: "--font-outfit",
-  src: "../../mobile/fintrack/assets/fonts/Outfit.ttf",
+  src: "./fonts/Outfit.ttf",
   weight: "100 900",
   display: "swap",
 });
