@@ -1,0 +1,261 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
+import type { FinancialRecord, McpGrant } from '@prisma/client';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
+import { checkSpending, monthlyForecast, occurrences, summary, todayIndia } from '@/lib/finance/engine';
+import { dateSchema, type Document, number as n, string as s } from '@/lib/finance/model';
+import { ApiError } from './api-error';
+import { fingerprint, secretKey } from './integration-secret';
+import { mcpWritesEnabled } from './mcp-auth';
+import { applyLedgerMutation, ensureImported, wire, withLedger } from './sync';
+
+const type = z.enum(['income', 'expense']);
+const id = z.string().min(1).max(200);
+const paise = z.number().int();
+const positivePaise = paise.positive().max(1_000_000_000_000);
+const timestamp = z.iso.datetime();
+const windowFields = {
+  from: dateSchema, to: dateSchema, limit: z.number().int().min(1).max(100).default(25),
+  cursor: z.string().max(1000).optional(),
+};
+const windowValid = ({ from, to }: { from: string; to: string }) => from < to
+  && Date.parse(to) - Date.parse(from) <= 366 * 86400000;
+const page = <T extends z.ZodType>(item: T) => z.strictObject({ items: z.array(item), nextCursor: z.string().nullable(), syncedAt: timestamp });
+const optionOutput = z.strictObject({
+  categories: z.array(z.strictObject({ id, name: z.string(), type })),
+  paymentMethods: z.array(z.strictObject({ id, name: z.string() })),
+  syncedAt: timestamp,
+});
+const transactionOutput = z.strictObject({
+  id, revision: z.number().int(), date: dateSchema, type, amountPaise: paise,
+  categoryId: id, paymentMethodId: id, description: z.string().optional(),
+});
+const scheduleState = z.enum(['paid', 'received', 'skipped', 'overdue', 'due', 'upcoming']);
+
+async function readLedger(userId: string) {
+  await ensureImported(userId);
+  const rows = await prisma.financialRecord.findMany({ where: { userId, deleted: false } });
+  return { records: rows.map(wire), syncedAt: new Date().toISOString() };
+}
+
+async function readTransactionWindow(userId: string, from: string, to: string) {
+  await ensureImported(userId);
+  const rows = await prisma.$queryRaw<FinancialRecord[]>`
+    SELECT * FROM "FinancialRecord"
+    WHERE "userId" = ${userId} AND NOT "deleted"
+      AND ("kind" IN ('category', 'paymentMethod')
+        OR ("kind" = 'transaction' AND "data"->>'date' >= ${from} AND "data"->>'date' < ${to}))
+  `;
+  return { records: rows.map(wire), syncedAt: new Date().toISOString() };
+}
+function ledgerOptions(records: Document[], kind?: string) {
+  return {
+    categories: records.filter(r => r.kind === 'category' && (!kind || s(r.data, 'type') === kind))
+      .map(r => ({ id: r.id, type: s(r.data, 'type'), name: s(r.data, 'name') })),
+    paymentMethods: records.filter(r => r.kind === 'paymentMethod').map(r => ({ id: r.id, name: s(r.data, 'name') })),
+  };
+}
+function orderedPage<T extends { id: string; date: string }>(
+  rows: T[], userId: string, operation: string, input: { limit: number; cursor?: string },
+) {
+  const { limit, cursor, ...filter } = input;
+  const secret = secretKey(process.env.MCP_STATE_KEY);
+  const parts = cursor?.split('.');
+  let anchor: { id: string; date: string } | undefined;
+  if (parts) {
+    const [encoded, signature] = parts;
+    const expected = fingerprint(secret, { userId, operation, filter, encoded });
+    if (parts.length !== 2 || !/^[0-9a-f]{64}$/.test(signature ?? '')
+      || !timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signature, 'hex'))) throw new ApiError(400, 'Invalid cursor.');
+    const parsed = z.strictObject({ id, date: dateSchema }).safeParse(JSON.parse(Buffer.from(encoded, 'base64url').toString()));
+    if (!parsed.success) throw new ApiError(400, 'Invalid cursor.');
+    anchor = parsed.data;
+  }
+  const compare = (a: { id: string; date: string }, b: { id: string; date: string }) =>
+    a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
+  const candidates = rows.sort(compare).filter(row => !anchor || compare(row, anchor) > 0);
+  const items = candidates.slice(0, limit);
+  const last = items.at(-1);
+  if (!last || candidates.length <= limit) return { items, nextCursor: null };
+  const encoded = Buffer.from(JSON.stringify({ id: last.id, date: last.date })).toString('base64url');
+  return { items, nextCursor: encoded + '.' + fingerprint(secret, { userId, operation, filter, encoded }) };
+}
+function result(value: Record<string, unknown>) {
+  return { structuredContent: value, content: [{ type: 'text' as const, text: JSON.stringify(value) }] };
+}
+function issue(error: unknown) {
+  const status = error instanceof ApiError ? error.status : error instanceof z.ZodError ? 400 : 500;
+  const code = ({ 400: 'invalid_input', 403: 'not_found', 404: 'not_found', 409: 'conflict', 429: 'rate_limited' } as Record<number, string>)[status] ?? 'temporarily_unavailable';
+  const message = error instanceof ApiError ? error.message : 'The request could not be completed.';
+  return { code, message };
+}
+function audit(grant: McpGrant, operation: string, outcome: string, objectId?: string) {
+  return { userId: grant.userId, clientId: grant.clientId, grantId: grant.id, operation, outcome, objectId };
+}
+
+export const writeTools = new Set(['create_transaction', 'update_transaction']);
+const patch = z.strictObject({ categoryId: id.optional(), paymentMethodId: id.optional(), description: z.string().max(1000).optional() });
+const create = z.strictObject({
+  idempotencyKey: z.uuid(), date: dateSchema, type, amountPaise: positivePaise,
+  categoryId: id, paymentMethodId: id, description: z.string().max(1000).default(''),
+});
+const update = z.strictObject({
+  idempotencyKey: z.uuid(), id, expectedRevision: z.number().int().positive(), patch,
+}).refine(value => Object.keys(value.patch).length > 0, 'Supply at least one field to update.');
+
+async function writeTransaction(grant: McpGrant, operation: string, input: z.infer<typeof create> | z.infer<typeof update>) {
+  const { userId } = grant;
+  const requestHash = fingerprint(secretKey(process.env.MCP_STATE_KEY), input);
+  const mutationId = 'mcp:' + createHash('sha256').update(JSON.stringify([userId, grant.id, operation, input.idempotencyKey])).digest('hex');
+  return withLedger(userId, async tx => {
+    const active = await tx.mcpGrant.findFirst({ where: { id: grant.id, userId, revokedAt: null, scopes: { has: 'ledger:write' } }, select: { id: true } });
+    if (!active || !mcpWritesEnabled()) throw new ApiError(403, 'The write grant is unavailable.');
+    const previous = await tx.syncMutation.findUnique({ where: { userId_id: { userId, id: mutationId } } });
+    if (previous) {
+      const saved = z.object({ requestHash: z.string(), response: z.record(z.string(), z.unknown()) }).parse(previous.result);
+      if (saved.requestHash !== requestHash) throw new ApiError(409, 'This request key was already used.');
+      return saved.response;
+    }
+
+    let change;
+    if ('patch' in input) {
+      const row = await tx.financialRecord.findFirst({ where: { userId, id: input.id, kind: 'transaction', deleted: false } });
+      if (!row) throw new ApiError(404, 'Transaction not found.');
+      if (row.revision !== input.expectedRevision) throw new ApiError(409, 'Transaction changed. Read it again before updating.');
+      if (s(wire(row).data, 'occurrenceId') || await tx.upiPaymentAttempt.findUnique({ where: { userId_ledgerId: { userId, ledgerId: row.id } }, select: { id: true } })) {
+        throw new ApiError(409, 'Edit linked payments in FinTrack.');
+      }
+      change = { id: row.id, kind: 'transaction', baseRevision: row.revision, data: { ...wire(row).data, ...input.patch } };
+    } else {
+      if (input.date > todayIndia()) throw new ApiError(400, 'Choose a date on or before today.');
+      const { date, type, amountPaise, categoryId, paymentMethodId, description } = input;
+      change = {
+        id: mutationId, kind: 'transaction', baseRevision: 0,
+        data: { date, type, amount: amountPaise, categoryId, paymentMethodId, description },
+      };
+    }
+
+    const mutation = await applyLedgerMutation(tx, userId, { id: mutationId, changes: [change] });
+    if (!mutation.accepted) throw new ApiError(409, 'The transaction changed.');
+    const [record] = mutation.records;
+    const response = 'patch' in input
+      ? { id: record.id, revision: record.revision, categoryId: s(record.data, 'categoryId'), paymentMethodId: s(record.data, 'paymentMethodId'), source: 'manual' }
+      : { id: record.id, revision: record.revision, date: s(record.data, 'date'), type: s(record.data, 'type'), amountPaise: n(record.data, 'amount'), source: 'manual' };
+    await tx.syncMutation.update({ where: { userId_id: { userId, id: mutationId } }, data: { result: { requestHash, response } } });
+    await tx.mcpAuditEvent.create({ data: audit(grant, operation, 'accepted', record.id) });
+    return response;
+  });
+}
+
+export function financeMcpServer(grant: McpGrant, write: boolean) {
+  const server = new McpServer({ name: 'FinTrack', version: '1.0.0' });
+  function tool<I extends z.ZodObject, O extends z.ZodObject>(
+    name: string, description: string, inputSchema: I, outputSchema: O, run: (input: z.output<I>) => Promise<unknown>,
+  ) {
+    const readOnly = !writeTools.has(name);
+    server.registerTool<z.ZodObject, z.ZodObject>(name, {
+      description, inputSchema, outputSchema,
+      annotations: { readOnlyHint: readOnly, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    }, async (raw: unknown) => {
+      try {
+        const parsed = outputSchema.parse(await run(z.parse(inputSchema, raw)));
+        if (readOnly) await prisma.mcpAuditEvent.create({ data: audit(grant, name, 'accepted') });
+        return result(parsed as Record<string, unknown>);
+      } catch (error) {
+        const failure = issue(error);
+        await prisma.mcpAuditEvent.create({ data: audit(grant, name, failure.code) }).catch(() => {});
+        return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify(failure) }] };
+      }
+    });
+  }
+
+  tool('list_ledger_options', 'Find your income and expense categories and payment methods.', z.strictObject({ type: type.optional() }), optionOutput, async input => {
+    const { records, syncedAt } = await readLedger(grant.userId);
+    return { ...ledgerOptions(records, input.type), syncedAt };
+  });
+  tool('list_transactions', 'Search synced entries within an inclusive start and exclusive end, up to 366 days.', z.strictObject({
+    ...windowFields, type: type.optional(), categoryId: id.optional(), paymentMethodId: id.optional(),
+    query: z.string().trim().min(1).max(120).optional(), includeDescriptions: z.boolean().default(false),
+  }).refine(windowValid, 'Choose a valid date window of up to 366 days.'), page(transactionOutput), async input => {
+    const { records, syncedAt } = await readTransactionWindow(grant.userId, input.from, input.to);
+    const labels = new Map(records.filter(row => row.kind === 'category' || row.kind === 'paymentMethod').map(row => [row.id, s(row.data, 'name')]));
+    const query = input.query?.toLowerCase();
+    const matches = records.filter(row => {
+      if (row.kind !== 'transaction') return false;
+      const date = s(row.data, 'date'), category = s(row.data, 'categoryId'), method = s(row.data, 'paymentMethodId');
+      return date >= input.from && date < input.to && (!input.type || input.type === s(row.data, 'type'))
+        && (!input.categoryId || input.categoryId === category) && (!input.paymentMethodId || input.paymentMethodId === method)
+        && (!query || [s(row.data, 'description'), labels.get(category), labels.get(method)].some(value => value?.toLowerCase().includes(query)));
+    }).map(row => ({
+      id: row.id, revision: row.revision, date: s(row.data, 'date'), type: s(row.data, 'type'), amountPaise: n(row.data, 'amount'),
+      categoryId: s(row.data, 'categoryId'), paymentMethodId: s(row.data, 'paymentMethodId'),
+      ...(input.includeDescriptions ? { description: s(row.data, 'description') } : {}),
+    }));
+    return { ...orderedPage(matches, grant.userId, 'transactions', input), syncedAt };
+  });
+  tool('get_finance_summary', 'Read payday-cycle totals, budgets, optional calendar forecast and spending check.', z.strictObject({
+    forecastMonth: z.string().regex(/^(20[0-9]{2}|2100)-(0[1-9]|1[0-2])$/).optional(),
+    categoryId: id.optional(), checkAmountPaise: positivePaise.optional(),
+  }).refine(value => !!value.categoryId === !!value.checkAmountPaise, 'Supply both category and amount for a spending check.'), z.strictObject({
+    currency: z.literal('INR'), cycle: z.strictObject({ start: dateSchema, end: dateSchema }),
+    balancePaise: paise, incomePaise: paise, expensePaise: paise, commitmentsPaise: paise, savingsPaise: paise, reservedBudgetsPaise: paise, availablePaise: paise,
+    budgets: z.array(z.strictObject({ categoryId: id, plannedPaise: paise, spentPaise: paise, remainingPaise: paise })),
+    forecast: z.strictObject({ month: z.string(), incomePaise: paise, expensePaise: paise, count: z.number().int() }).optional(),
+    spendingCheck: z.strictObject({ allowed: z.boolean(), maximumPaise: paise, shortfallPaise: paise }).optional(), syncedAt: timestamp,
+  }), async input => {
+    const { records, syncedAt } = await readLedger(grant.userId);
+    const today = todayIndia();
+    const totals = summary(records, today);
+    const forecast = input.forecastMonth ? monthlyForecast(records, today, input.forecastMonth) : undefined;
+    if (input.categoryId && !records.some(row => row.id === input.categoryId && row.kind === 'category' && row.data.type === 'expense')) {
+      throw new ApiError(404, 'Expense category not found.');
+    }
+    const check = input.categoryId && input.checkAmountPaise ? checkSpending(records, today, input.checkAmountPaise, input.categoryId) : undefined;
+    return {
+      currency: 'INR', cycle: totals.period, balancePaise: totals.balance, incomePaise: totals.income, expensePaise: totals.expenses,
+      commitmentsPaise: totals.commitments, savingsPaise: totals.savings, reservedBudgetsPaise: totals.reservedBudgets, availablePaise: totals.unallocated,
+      budgets: totals.budgets.map(budget => ({ categoryId: budget.categoryId, plannedPaise: budget.planned, spentPaise: budget.spent, remainingPaise: budget.remaining })),
+      ...(forecast && { forecast: { month: input.forecastMonth, incomePaise: forecast.income, expensePaise: forecast.expenses, count: forecast.count } }),
+      ...(check && { spendingCheck: { allowed: check.allowed, maximumPaise: check.maximum, shortfallPaise: check.shortfall } }), syncedAt,
+    };
+  });
+  tool('list_scheduled_payments', 'Read scheduled entries and their ledger-derived status.', z.strictObject({
+    ...windowFields, type: type.optional(), state: scheduleState.optional(),
+  }).refine(windowValid, 'Choose a valid date window of up to 366 days.'), page(z.strictObject({
+    occurrenceId: id, planId: id, name: z.string(), dueDate: dateSchema, type, amountPaise: paise, categoryId: id, state: scheduleState, transactionId: id.optional(),
+  })), async input => {
+    const { records, syncedAt } = await readLedger(grant.userId);
+    const matches = occurrences(records, todayIndia(), input.to).filter(row => {
+      const date = s(row.data, 'date');
+      return date >= input.from && date < input.to && (!input.type || input.type === row.data.type) && (!input.state || input.state === row.state);
+    }).map(row => ({
+      id: row.id, date: s(row.data, 'date'),
+      value: {
+        occurrenceId: row.id, planId: s(row.data, 'planId'), name: s(row.data, 'name'), dueDate: s(row.data, 'date'),
+        type: s(row.data, 'type'), amountPaise: n(row.data, 'amount'), categoryId: s(row.data, 'categoryId'),
+        state: row.state, transactionId: row.transactionId,
+      },
+    }));
+    const listing = orderedPage(matches, grant.userId, 'schedule', input);
+    return { items: listing.items.map(row => row.value), nextCursor: listing.nextCursor, syncedAt };
+  });
+  if (write) {
+    tool('create_transaction', 'Record income already received or an expense already paid. Does not move money.', create, z.strictObject({
+      id, revision: z.number().int(), date: dateSchema, type, amountPaise: paise, source: z.literal('manual'),
+    }), input => writeTransaction(grant, 'create_transaction', input));
+    tool('update_transaction', 'Correct the classification or note on an unlinked manual transaction.', update, z.strictObject({
+      id, revision: z.number().int(), categoryId: id, paymentMethodId: id, source: z.literal('manual'),
+    }), input => writeTransaction(grant, 'update_transaction', input));
+  }
+
+  for (const kind of ['categories', 'paymentMethods'] as const) {
+    const uri = 'fintrack://ledger/' + (kind === 'categories' ? 'categories' : 'payment-methods');
+    server.registerResource(kind, uri, { mimeType: 'application/json' }, async () => {
+      const { records, syncedAt } = await readLedger(grant.userId);
+      await prisma.mcpAuditEvent.create({ data: audit(grant, 'resource:' + kind, 'accepted') });
+      return { contents: [{ uri, mimeType: 'application/json', text: JSON.stringify({ items: ledgerOptions(records)[kind], syncedAt }) }] };
+    });
+  }
+  return server;
+}

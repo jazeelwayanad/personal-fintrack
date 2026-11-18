@@ -1,13 +1,15 @@
+import { measure } from '@/lib/server/metrics';
 import { requireFinanceCapability } from '@/lib/server/finance-capability';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { api, body } from '@/lib/server/http';
 import { requireUser } from '@/lib/server/mobile-auth';
-import { pull, push, ApiError } from '@/lib/server/sync';
+import { pull, push } from '@/lib/server/sync';
+import { ApiError } from '@/lib/server/api-error';
 import { Change } from '@/lib/finance/model';
 const item = z.object({ syncId: z.string(), deletedAt: z.number().nullable().optional() }).passthrough();
 const schema = z.object({ transactions: z.array(item).default([]), categories: z.array(item).default([]), paymentMethods: z.array(item).default([]) });
-export async function POST(req: Request) { return api(async () => {
+export async function POST(req: Request) { return api(() => measure('sync.legacy.push', async () => {
   const userId = await requireUser(req); requireFinanceCapability(req); const input = schema.parse(await body(req));
   const current = await pull(userId, 0), byId = new Map(current.records.map(r => [r.id, r]));
   const changes: Change[] = [];
@@ -18,4 +20,4 @@ export async function POST(req: Request) { return api(async () => {
   const result = await push(userId, { id: randomUUID(), changes });
   if (!result.accepted) throw new ApiError(409, 'Please sync and retry.');
   return { success: true };
-}); }
+})); }

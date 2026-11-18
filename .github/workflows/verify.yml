@@ -1,0 +1,56 @@
+name: Verify
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    services:
+      database:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: fintrack
+          POSTGRES_PASSWORD: fintrack-local-only
+          POSTGRES_DB: fintrack
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U fintrack"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://fintrack:fintrack-local-only@127.0.0.1:55432/fintrack
+      AUTH_SECRET: fintrack-ci-nextauth-test-only-secret
+      MOBILE_AUTH_SECRET: fintrack-ci-mobile-test-only-secret
+      RUN_DATABASE_TESTS: '1'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+  flutter:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile/fintrack
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.8'
+          channel: stable
+      - run: flutter pub get --enforce-lockfile
+      - run: flutter analyze --no-pub
+      - run: flutter test --no-pub

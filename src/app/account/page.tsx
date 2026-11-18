@@ -11,7 +11,7 @@ import { prepareProfilePhoto } from '@/lib/profile-photo';
 import { FeedbackForm } from '@/components/feedback-form';
 import { toast } from 'sonner';
 
-type Profile = { name: string; email: string; phone: string; image: string | null; photoUploadEnabled: boolean };
+type Profile = { name: string; email: string; phone: string; image: string | null; photoUploadEnabled: boolean; emailVerificationPending?: boolean };
 async function profileResponse(response: Response): Promise<Profile> {
   const value = await response.json();
   if (!response.ok) throw new Error(value.details?.join(' ') || value.error || 'Could not update your profile.');
@@ -55,7 +55,7 @@ export default function AccountPage() {
       const saved = await profileResponse(await fetch('/api/v1/account', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft) }));
       setProfile(saved); setEditing(false); setDraft({ name: '', email: '', phone: '', currentPassword: '' });
       window.dispatchEvent(new Event('fintrack-profile-updated'));
-      await update().catch(() => {}); toast.success('Account details updated');
+      await update().catch(() => {}); toast.success(saved.emailVerificationPending ? 'Check your new email address for a verification link' : 'Account details updated');
     } catch (error) { setError(error instanceof Error ? error.message : 'Could not save. Your entries are still here.'); }
     finally { submitting.current = false; setBusy(false); }
   }

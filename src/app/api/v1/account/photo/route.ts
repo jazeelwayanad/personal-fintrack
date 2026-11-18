@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { api } from '@/lib/server/http';
 import { requireUser } from '@/lib/server/mobile-auth';
 import { photoLimit, savePhoto, removePhoto } from '@/lib/server/account';
-import { ApiError } from '@/lib/server/sync';
+import { ApiError } from '@/lib/server/api-error';
 import { downloadCloudinaryPhoto } from '@/lib/server/cloudinary';
 export const runtime = 'nodejs';
 export async function GET(req: Request) {

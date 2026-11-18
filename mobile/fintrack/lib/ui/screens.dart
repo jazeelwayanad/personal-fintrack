@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'navigation.dart';
 import 'patterns.dart';
 import 'updates.dart';
+import 'upi.dart';
 import '../data/updates.dart';
 import 'package:intl/intl.dart';
 import 'account.dart';
@@ -601,12 +602,18 @@ class _FinScreenState extends ConsumerState<FinScreen>
                 Wrap(
                   alignment: WrapAlignment.end,
                   children: [
+                    if (upiPilot && text(o.doc.data, 'type') == 'expense')
+                      TextButton(
+                        onPressed: () =>
+                            openUpiPayment(context, ledger, occurrence: o),
+                        child: const Text('Pay with UPI'),
+                      ),
                     TextButton(
                       onPressed: () => pay(ledger, o),
                       child: Text(
                         text(o.doc.data, 'type') == 'income'
                             ? 'Received'
-                            : 'Mark paid',
+                            : 'Record payment',
                       ),
                     ),
                     TextButton(
@@ -766,7 +773,7 @@ class _FinScreenState extends ConsumerState<FinScreen>
     final sections = <Widget>[];
     if (widget.screen == 'home') {
       sections.addAll([
-        metric('Available credit', amount(totals, 'unallocated'), hero: true),
+        metric('Available to spend', amount(totals, 'unallocated'), hero: true),
         quickActions(ledger),
         balanceBreakdown(totals),
       ]);
@@ -1228,6 +1235,22 @@ class _FinScreenState extends ConsumerState<FinScreen>
       );
     }
     if (widget.screen == 'settings') {
+      if (upiPilot) {
+        sections.add(
+          panel('UPI payments', [
+            FilledButton.icon(
+              onPressed: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => UpiPaymentsPage(ledger: ledger),
+                ),
+              ),
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text('Pay with UPI'),
+            ),
+          ]),
+        );
+      }
       sections.add(
         panel('About FinTrack', [
           const UpdateSettings(),

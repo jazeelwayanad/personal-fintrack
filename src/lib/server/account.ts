@@ -1,8 +1,9 @@
+import { accountVerificationEnabled, requestEmailChange } from './account-tokens';
 import bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { ApiError } from './sync';
+import { ApiError } from '@/lib/server/api-error';
 import { cloudinaryEnabled, uploadCloudinaryPhoto, deleteCloudinaryPhoto } from './cloudinary';
 
 const fields = { id: true, name: true, email: true, profile: { select: { phone: true, photoType: true, updatedAt: true } } } as const;
@@ -20,7 +21,7 @@ export async function readAccount(userId: string) {
 }
 export async function updateAccount(userId: string, input: unknown) {
   const data = profileInput.parse(input);
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, password: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, password: true, sessionVersion: true } });
   if (!user) throw new ApiError(401, 'Please sign in again.');
   if (data.email !== user.email) {
     if (!data.currentPassword) throw new ApiError(400, 'Enter your current password to change your email.');
@@ -35,14 +36,16 @@ export async function updateAccount(userId: string, input: unknown) {
     const existing = await prisma.user.findFirst({ where: { email: { equals: data.email, mode: 'insensitive' }, id: { not: userId } }, select: { id: true } });
     if (existing) throw new ApiError(409, 'This email is already in use.');
   }
+  const pendingEmail = data.email !== user.email && accountVerificationEnabled();
+  if (pendingEmail) await requestEmailChange(user, data.email);
   try {
-    await prisma.user.update({ where: { id: userId }, data: { name: data.name, email: data.email, profile: { upsert: { create: { phone: data.phone || null }, update: { phone: data.phone || null } } } } });
+    await prisma.user.update({ where: { id: userId }, data: { name: data.name, email: pendingEmail ? undefined : data.email === user.email ? undefined : data.email, profile: { upsert: { create: { phone: data.phone || null }, update: { phone: data.phone || null } } } } });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ApiError(409, 'This email is already in use.');
     throw error;
   }
   if (data.email !== user.email) await prisma.authAttempt.deleteMany({ where: { key: `profile-email:${userId}` } });
-  return readAccount(userId);
+  return { ...await readAccount(userId), ...(pendingEmail ? { emailVerificationPending: true } : {}) };
 }
 export const photoLimit = 512 * 1024;
 export function validatePhoto(bytes: Uint8Array, type: string) {

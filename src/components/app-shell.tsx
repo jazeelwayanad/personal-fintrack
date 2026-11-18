@@ -21,7 +21,7 @@ const tabs = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  if (pathname === '/login') return children;
+  if (pathname === '/login' || pathname === '/recover') return children;
   return <FinanceProvider><ConfirmProvider><Shell>{children}</Shell></ConfirmProvider></FinanceProvider>;
 }
 
@@ -50,6 +50,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     </header>
 
     <main id="main-content" className="fin-main mx-auto max-w-6xl px-4 pb-32 pt-6 sm:px-6 md:pb-14">
+      {status !== 'Synced' && <p className="mb-3 text-sm text-muted-foreground" aria-hidden="true">{status}{pending ? ' · ' + pending + ' pending' : ''}</p>}
       {children}
       <footer className="mt-8 flex flex-wrap justify-center gap-x-2 gap-y-1 text-center text-xs text-muted-foreground"><span>FinTrack v{APP_VERSION}</span><span aria-hidden="true">·</span><span>Developed by {DEVELOPER_NAME}</span></footer>
     </main>

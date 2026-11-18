@@ -88,9 +88,15 @@ class _AccountScreenState extends State<AccountScreen> {
         editing = false;
         password.clear();
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Profile saved')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['emailVerificationPending'] == true
+                ? 'Check your new email for a verification link'
+                : 'Profile saved',
+          ),
+        ),
+      );
     } catch (e) {
       if (mounted) setState(() => error = e.toString());
     } finally {

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { ApiError } from './sync';
+import { ApiError } from '@/lib/server/api-error';
 const schema = z.object({
   id: z.string().uuid(),
   topic: z.enum(['suggestion', 'issue', 'other']),

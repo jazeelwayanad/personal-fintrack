@@ -19,8 +19,8 @@ export function FinanceOverview({ totals, period, budgets, payments, activity, s
     <div className="fin-overview-heading"><div><h1>{firstName ? `Hello, ${firstName}.` : 'Welcome back.'}</h1><p className="text-sm text-muted-foreground">Let’s make room for what matters.</p></div></div>
     <div className="fin-overview-grid">
       <div className="fin-overview-column">
-        <section className="fin-credit-card" aria-label="Available credit">
-          <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-normal">Available credit</h2></div>
+        <section className="fin-credit-card" aria-label="Available to spend">
+          <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-normal">Available to spend</h2></div>
           <p className="fin-credit-amount">{money(totals.unallocated)}<span>INR</span></p>
           <p className="fin-credit-definition">After bills, savings & category reserves</p>
           <div className="fin-credit-footer"><span><CalendarDays size={15}/>{period}</span></div>

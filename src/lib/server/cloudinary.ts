@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { ApiError } from './sync';
+import { ApiError } from '@/lib/server/api-error';
 
 export const cloudinaryEnabled = () => Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
 function config() {

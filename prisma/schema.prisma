@@ -14,8 +14,14 @@ model User {
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  sessionVersion Int @default(0)
+  accountTokens AccountToken[]
 
   feedback Feedback[]
+  mcpIdentities McpIdentity[]
+  mcpGrants McpGrant[]
+  mcpAuditEvents McpAuditEvent[]
+  upiAttempts UpiPaymentAttempt[]
   profile UserProfile?
   syncRevision Int @default(0)
   syncImported Boolean @default(false)
@@ -138,6 +144,7 @@ model AuthAttempt {
   key String @id
   count Int
   expiresAt DateTime
+  @@index([expiresAt])
 }
 
 // Optional account details; photos are served only to the authenticated owner.
@@ -166,4 +173,97 @@ model Feedback {
   createdAt DateTime @default(now())
   @@id([userId, id])
   @@index([createdAt])
+}
+
+model McpIdentity {
+  issuer String
+  subject String
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([issuer, subject])
+  @@unique([userId, issuer])
+}
+
+model McpGrant {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issuer String
+  subject String
+  clientId String
+  scopes String[]
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([issuer, subject, clientId, revokedAt])
+  @@index([userId])
+}
+
+model McpAuditEvent {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grantId String
+  clientId String
+  operation String
+  objectId String?
+  outcome String
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+}
+
+model UpiPaymentAttempt {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createKey String
+  requestHash String
+  payeeVpa String
+  payeeName String?
+  amountMode String
+  amountPaise BigInt
+  categoryId String
+  purpose String
+  reference String?
+  referenceMatchKey String?
+  occurrenceId String?
+  status String @default("ready")
+  reportedOutcome String?
+  evidenceStatus String @default("unverified")
+  ledgerId String?
+  recordedLedgerRevision Int?
+  revision Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  evidence UpiPaymentEvidence[]
+  @@unique([userId, createKey])
+  @@unique([userId, ledgerId])
+  @@index([userId, createdAt, id])
+}
+
+model UpiPaymentEvidence {
+  id String @id @default(uuid())
+  attemptId String
+  attempt UpiPaymentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  source String
+  requestKey String
+  requestHash String
+  result String
+  statementOwnerId String?
+  statementKey String?
+  createdAt DateTime @default(now())
+  @@unique([attemptId, source, requestKey])
+  @@unique([statementOwnerId, statementKey])
+}
+
+model AccountToken {
+  hash String @id
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind String
+  newEmail String?
+  originalEmail String
+  sessionVersion Int
+  expiresAt DateTime
+  @@index([userId, kind])
+  @@index([expiresAt])
 }

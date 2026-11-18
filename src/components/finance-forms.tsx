@@ -39,7 +39,7 @@ export function Editor({ kind, initial, close, occurrenceId }: { kind: Kind; ini
       docs.push(document(id, kind, data));
       if (kind === 'plan' && s(data, 'planType') === 'salary') { const pref = records.find(r => r.kind === 'preferences' && !r.deleted); docs.push(document('preferences', 'preferences', { ...defaults, ...pref?.data, payday: Number(s(data, 'startDate').slice(8)) })); }
       if (occurrenceId) {
-        const occ = occurrences(records, todayIndia(), '2100-12-31').find(o => o.id === occurrenceId);
+        const occ = occurrences(records, todayIndia(), occurrenceId.slice(-10)).find(o => o.id === occurrenceId);
         if (!occ) throw new Error('Payment no longer exists.');
         docs[docs.length - 1].data.occurrenceId = occurrenceId;
         docs[docs.length - 1].id = initial?.id ?? `payment:${occurrenceId}`;

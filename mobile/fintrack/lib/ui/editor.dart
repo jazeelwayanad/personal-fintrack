@@ -444,7 +444,7 @@ class _RecordEditorState extends State<RecordEditor> {
         final o = occurrences(
           ledger.records,
           todayIndia(),
-          '2100-12-31',
+          widget.occurrenceId!.substring(widget.occurrenceId!.length - 10),
         ).firstWhere((o) => o.doc.id == widget.occurrenceId);
         docs[0] = Doc(
           widget.initial?.id ?? 'payment:${o.doc.id}',
