@@ -20,3 +20,11 @@ Apply the Prisma migrations before activating integration flags. Rehearse on a d
 ## Account emails
 
 Set a verified Resend sender in `ACCOUNT_EMAIL_FROM`, an API key in `RESEND_API_KEY`, and the canonical HTTPS `AUTH_URL`. Enable `ACCOUNT_VERIFICATION_ENABLED` after testing both email change and recovery delivery in staging. Password reset revokes mobile sessions, web session tokens, and connector grants.
+
+## Completion checks
+
+Payment-history access is an independent `payments:read` grant. Add that scope to the Auth0 API if enabling it. Owners opt in from AI connector settings. The `list_upi_attempts` tool provides filtered, paginated amount/date/category/status/evidence summaries and linked ledger IDs. Recipient identifiers, purpose text, and references stay out of its output. Grant revocation also applies to resources and to calls on an existing MCP server instance.
+
+Android retains a pending app result in account-scoped secure storage before opening UPI. Returning to history retries the same result request. Interrupted handoffs remain unresolved, and manual recording uses a stable idempotency key across retries and screen restarts. History on both clients supports status and evidence filtering.
+
+Use the existing staging release steps above for live Auth0 and installed UPI app checks. Provider-backed automatic verification and cross-device draft QR remain subsequent integrations. Automated tests simulate OAuth signatures and provider responses. Production tenant credentials, live email delivery, real UPI apps, and bank/provider confirmation still require deployment configuration and device testing.

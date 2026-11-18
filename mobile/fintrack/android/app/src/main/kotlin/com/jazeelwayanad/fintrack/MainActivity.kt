@@ -7,14 +7,31 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val upiRequest = 8754
+    private var nextUpiRequest = 8754
+    private var pendingUpiRequest: Int? = null
     private var upiResult: MethodChannel.Result? = null
+
+    override fun onResume() {
+        super.onResume()
+        val pending = pendingUpiRequest ?: return
+        // Some payment apps leave their result unfinished when the user returns
+        // through Recents. Release the Flutter screen with an advisory unknown.
+        window.decorView.postDelayed({
+            if (pendingUpiRequest == pending && hasWindowFocus()) {
+                val callback = upiResult
+                pendingUpiRequest = null
+                upiResult = null
+                callback?.success("unknown")
+            }
+        }, 1000)
+    }
 
     @Deprecated("Used for the UPI chooser result on FlutterActivity")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != upiRequest) return
+        if (requestCode != pendingUpiRequest) return
         val callback = upiResult ?: return
+        pendingUpiRequest = null
         upiResult = null
         val status = data?.getStringExtra("response")
             ?.split("&")
@@ -51,8 +68,12 @@ class MainActivity : FlutterActivity() {
         }
         try {
             upiResult = result
-            startActivityForResult(Intent.createChooser(intent, "Pay with UPI"), upiRequest)
+            val requestCode = nextUpiRequest
+            nextUpiRequest = if (requestCode == 65535) 8754 else requestCode + 1
+            pendingUpiRequest = requestCode
+            startActivityForResult(Intent.createChooser(intent, "Pay with UPI"), requestCode)
         } catch (error: android.content.ActivityNotFoundException) {
+            pendingUpiRequest = null
             upiResult = null
             result.success("launch_failed")
         }

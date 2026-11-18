@@ -123,8 +123,42 @@ describe.skipIf(!enabled)('MCP and UPI with PostgreSQL', () => {
       const initialized = await call(token);
       expect(initialized.status).toBe(200);
       expect(await initialized.json()).toMatchObject({ result: { serverInfo: { name: 'FinTrack' } } });
+      const historyCall = await POST(new Request(resource, {
+        method: 'POST', headers: { authorization: 'Bearer ' + token, accept: 'application/json,text/event-stream', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'list_upi_attempts', arguments: { from: todayIndia(), to: '2027-01-01' } } }),
+      }));
+      expect(historyCall.status).toBe(403);
+      expect(historyCall.headers.get('WWW-Authenticate')).toContain('scope="payments:read"');
       await prisma.mcpGrant.update({ where: { id: grant.id }, data: { revokedAt: new Date() } });
       expect((await call(token)).status).toBe(403);
+    } finally {
+      mockFetch.mockRestore();
+    }
+  });
+
+  it('invalidates identity-link proofs after session revocation', async () => {
+    const { completeIdentityLink } = await import('../src/lib/server/mcp-auth');
+    vi.stubEnv('MCP_LINK_CLIENT_ID', 'link-test-client');
+    vi.stubEnv('MCP_LINK_CLIENT_SECRET', 'synthetic-secret');
+    const owner = await prisma.user.findUniqueOrThrow({ where: { id: user } });
+    const proof = await new SignJWT({ state: 'state', verifier: 'verifier', nonce: 'nonce', sessionVersion: owner.sessionVersion - 1 })
+      .setProtectedHeader({ alg: 'HS256' }).setSubject(user).setAudience('fintrack-mcp-link').setExpirationTime('1m')
+      .sign(Buffer.from('a1'.repeat(32), 'hex'));
+    const { privateKey, publicKey } = await generateKeyPair('RS256');
+    const issuer = 'https://identity-link.fintrack-integration.test/';
+    vi.stubEnv('MCP_ISSUER', issuer);
+    const identity = await new SignJWT({ nonce: 'nonce' }).setProtectedHeader({ alg: 'RS256', kid: 'identity-key' })
+      .setSubject('external-owner').setIssuer(issuer).setAudience('link-test-client').setExpirationTime('1m').sign(privateKey);
+    const jwk = await exportJWK(publicKey);
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async request => {
+      const url = String(request);
+      if (url.endsWith('/oauth/token')) return Response.json({ id_token: identity });
+      expect(url).toBe(issuer + '.well-known/jwks.json');
+      return Response.json({ keys: [{ ...jwk, kid: 'identity-key' }] });
+    });
+    try {
+      await expect(completeIdentityLink(user, proof, new URLSearchParams({ code: 'code', state: 'state' }))).rejects.toMatchObject({ status: 400 });
+      expect(await prisma.mcpIdentity.count({ where: { userId: user } })).toBe(0);
     } finally {
       mockFetch.mockRestore();
     }
@@ -160,6 +194,45 @@ describe.skipIf(!enabled)('MCP and UPI with PostgreSQL', () => {
     }
   });
 
+  it('exposes payment history only with its separate scope and hides sensitive fields', async () => {
+    const { financeMcpServer } = await import('../src/lib/server/mcp-tools');
+    const create = async (purpose: string) => upi.createUpiAttempt(user, {
+      idempotencyKey: randomUUID(), payeeVpa: 'private-payee@bank', amountMode: 'open',
+      amountPaise: 250, categoryId: category, purpose, reference: 'PRIVATE REFERENCE',
+    });
+    const first = await create('Private purpose A');
+    await create('Private purpose B');
+    await create('Private purpose C');
+    const grant = await prisma.mcpGrant.create({ data: {
+      userId: user, issuer: 'https://issuer.example/', subject: 'owner', clientId: 'payments-connector', scopes: ['ledger:read', 'payments:read'],
+    } });
+    const server = financeMcpServer(grant, false, true);
+    const client = new Client({ name: 'test', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+    const from = todayIndia(), to = new Date(Date.parse(from) + 86400000).toISOString().slice(0, 10);
+    try {
+      const listing = await client.callTool({ name: 'list_upi_attempts', arguments: { from, to, limit: 1 } });
+      expect(listing.isError).not.toBe(true);
+      const page = listing.structuredContent as { items: { attemptId: string }[]; nextCursor: string };
+      expect(page.items).toHaveLength(1);
+      expect(page.nextCursor).toBeTruthy();
+      expect(JSON.stringify(page)).not.toMatch(/private-payee|PRIVATE REFERENCE|Private purpose|payeeMasked|purpose/);
+      const next = await client.callTool({ name: 'list_upi_attempts', arguments: { from, to, limit: 1, cursor: page.nextCursor } });
+      expect(next.isError).not.toBe(true);
+      expect((next.structuredContent as typeof page).items[0].attemptId).not.toBe(page.items[0].attemptId);
+      const changed = await client.callTool({ name: 'list_upi_attempts', arguments: { from, to, limit: 1, cursor: page.nextCursor, status: 'ready' } });
+      expect(changed.isError).toBe(true);
+      await prisma.mcpGrant.update({ where: { id: grant.id }, data: { scopes: ['ledger:read'] } });
+      expect((await client.callTool({ name: 'list_upi_attempts', arguments: { from, to } })).isError).toBe(true);
+      expect((await upi.readUpiAttempt(user, first.attemptId)).status).toBe('ready');
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
   it('records app outcomes as advisory and settles a manual statement debit once', async () => {
     const creation = { idempotencyKey: randomUUID(), payeeVpa: 'bill@example', amountMode: 'fixed', amountPaise: 725, categoryId: category, purpose: 'Water bill', reference: 'bill 32' };
     const attempt = await upi.createUpiAttempt(user, creation);
@@ -182,6 +255,11 @@ describe.skipIf(!enabled)('MCP and UPI with PostgreSQL', () => {
     expect(first).toMatchObject({ evidenceStatus: 'statement', status: 'recorded_manually', reviewRequired: false });
     expect(await prisma.financialRecord.count({ where: { userId: user, id: first.ledgerId! } })).toBe(1);
     expect((await upi.previewStatement(user, { content })).rows[0].duplicate).toBe(true);
+    const row = await prisma.financialRecord.findUniqueOrThrow({ where: { userId_id: { userId: user, id: first.ledgerId! } } });
+    await sync.push(user, { id: randomUUID(), changes: [{ ...sync.wire(row), baseRevision: row.revision, deleted: true }] });
+    expect((await upi.recordUpiExpense(user, attempt.attemptId, record)).reviewRequired).toBe(true);
+    expect((await upi.createUpiAttempt(user, creation)).reviewRequired).toBe(true);
+    expect((await upi.reportUpiOutcome(user, attempt.attemptId, { idempotencyKey: claimKey, result: 'claim' })).reviewRequired).toBe(true);
   });
 });
 

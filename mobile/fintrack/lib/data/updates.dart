@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-const appVersion = '1.2.3';
+const appVersion = '1.2.5';
 const releaseRepository = 'jazeelwayanad/personal-fintrack';
 
 bool newerVersion(String candidate, String installed) {

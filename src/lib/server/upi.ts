@@ -46,6 +46,7 @@ const filters = z.strictObject({
   to: dateSchema.optional(),
   status: z.enum(states).optional(),
   reportedOutcome: z.enum(appResults).optional(),
+  evidence: z.enum(['unverified', 'manual', 'statement']).optional(),
   category: id.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   cursor: z.uuid().optional(),
@@ -65,11 +66,12 @@ async function attemptFor(db: Pick<Tx, 'upiPaymentAttempt'>, userId: string, id:
   if (!attempt) throw new ApiError(404, 'Payment attempt not found.');
   return attempt;
 }
-async function revisions(userId: string, attempts: UpiPaymentAttempt[], secret: Buffer) {
+async function revisions(userId: string, attempts: UpiPaymentAttempt[], secret: Buffer, includePayee = true) {
   const ids = attempts.flatMap(a => a.ledgerId ? [a.ledgerId] : []);
   const rows = ids.length ? await prisma.financialRecord.findMany({ where: { userId, id: { in: ids }, deleted: false }, select: { id: true, revision: true } }) : [];
   const byId = new Map(rows.map(row => [row.id, row.revision]));
   return attempts.map(attempt => {
+    if (!includePayee) return { ...view(attempt, attempt.ledgerId ? byId.get(attempt.ledgerId) : undefined), payeeMasked: undefined };
     const vpa = openSealed(secret, attempt.payeeVpa, userId + ':' + attempt.id + ':vpa');
     const [local, domain] = vpa.split('@');
     return {
@@ -102,7 +104,7 @@ export async function createUpiAttempt(userId: string, input: unknown) {
     const previous = await tx.upiPaymentAttempt.findUnique({ where: { userId_createKey: { userId, createKey: idempotencyKey } } });
     if (previous) {
       if (previous.requestHash !== requestHash) throw new ApiError(409, 'This request key was already used.');
-      return view(previous, previous.recordedLedgerRevision ?? undefined);
+      return currentView(tx, previous);
     }
     await expenseCategory(tx, userId, data.categoryId);
     if (data.occurrenceId) {
@@ -123,11 +125,11 @@ export async function createUpiAttempt(userId: string, input: unknown) {
   });
 }
 
-export async function listUpiAttempts(userId: string, params: URLSearchParams) {
+export async function listUpiAttempts(userId: string, params: URLSearchParams, includePayee = true) {
   const secret = dataKey();
   const input = filters.parse(Object.fromEntries(params));
   const where = {
-    userId, status: input.status, reportedOutcome: input.reportedOutcome, categoryId: input.category,
+    userId, evidenceStatus: input.evidence, status: input.status, reportedOutcome: input.reportedOutcome, categoryId: input.category,
     createdAt: {
       gte: input.from ? new Date(input.from + 'T00:00:00+05:30') : undefined,
       lt: input.to ? new Date(input.to + 'T00:00:00+05:30') : undefined,
@@ -141,13 +143,20 @@ export async function listUpiAttempts(userId: string, params: URLSearchParams) {
     ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
   });
   const page = rows.slice(0, input.limit);
-  return { items: await revisions(userId, page, secret), nextCursor: rows.length > input.limit ? page.at(-1)!.id : null };
+  return { items: await revisions(userId, page, secret, includePayee), nextCursor: rows.length > input.limit ? page.at(-1)!.id : null };
 }
 
 export async function readUpiAttempt(userId: string, attemptId: string) {
   const secret = dataKey();
   const [result] = await revisions(userId, [await attemptFor(prisma, userId, attemptId)], secret);
   return result;
+}
+
+async function currentView(tx: Tx, attempt: UpiPaymentAttempt) {
+  const record = attempt.ledgerId ? await tx.financialRecord.findFirst({
+    where: { userId: attempt.userId, id: attempt.ledgerId, deleted: false }, select: { revision: true },
+  }) : null;
+  return view(attempt, record?.revision);
 }
 
 async function replayEvidence(tx: Tx, attemptId: string, source: string, requestKey: string, requestHash: string) {
@@ -163,7 +172,7 @@ export async function reportUpiOutcome(userId: string, attemptId: string, input:
   return withLedger(userId, async tx => {
     const attempt = await attemptFor(tx, userId, attemptId);
     const event = await replayEvidence(tx, attemptId, 'app', idempotencyKey, requestHash);
-    if (event) return { ...view(attempt, attempt.recordedLedgerRevision ?? undefined), launchAllowed: false };
+    if (event) return { ...await currentView(tx, attempt), launchAllowed: false };
     const claiming = result === 'claim';
     if (claiming ? !['ready', 'launch_failed'].includes(attempt.status) : attempt.status !== 'awaiting_confirmation') {
       throw new ApiError(409, 'Check the status in your UPI app before continuing.');
@@ -185,7 +194,7 @@ export async function recordUpiExpense(userId: string, attemptId: string, input:
   return withLedger(userId, async tx => {
     const attempt = await attemptFor(tx, userId, attemptId);
     const event = await replayEvidence(tx, attemptId, 'manual', idempotencyKey, requestHash);
-    if (event) return view(attempt, attempt.recordedLedgerRevision ?? undefined);
+    if (event) return currentView(tx, attempt);
     if (attempt.ledgerId || attempt.revision !== data.expectedRevision) throw new ApiError(409, 'This attempt changed. Refresh its history.');
     if (attempt.status !== 'awaiting_confirmation') throw new ApiError(409, 'Open the payment app before recording this attempt.');
     await expenseCategory(tx, userId, attempt.categoryId);
@@ -285,7 +294,7 @@ export async function previewStatement(userId: string, input: unknown) {
     seen.add(keys[index]);
     const ref = referenceKey(secret, userId, row.reference);
     const candidates = duplicate ? [] : attempts.filter(attempt => Number(attempt.amountPaise) === row.amountPaise && matchesDate(attempt.createdAt, row.date))
-      .map(attempt => ({ attemptId: attempt.id, revision: attempt.revision, purpose: attempt.purpose, referenceMatched: attempt.referenceMatchKey === ref }))
+      .map(attempt => ({ attemptId: attempt.id, revision: attempt.revision, purpose: attempt.purpose, categoryId: attempt.categoryId, referenceMatched: attempt.referenceMatchKey === ref }))
       .sort((a, b) => Number(b.referenceMatched) - Number(a.referenceMatched));
     return { row, duplicate, candidates };
   }) };

@@ -5,10 +5,11 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/ledger.dart';
+import '../data/upi.dart';
 import '../domain/finance.dart';
 import '../domain/upi.dart';
 
-const upiPilot = bool.fromEnvironment('FINTRACK_UPI_PILOT');
+const upiPilot = bool.fromEnvironment('FINTRACK_UPI_PILOT', defaultValue: true);
 const _attempts = '/api/v1/upi/attempts';
 const _ids = Uuid();
 
@@ -20,16 +21,35 @@ class UpiPaymentsPage extends StatefulWidget {
   State<UpiPaymentsPage> createState() => _UpiPaymentsPageState();
 }
 
-class _UpiPaymentsPageState extends State<UpiPaymentsPage> {
+class _UpiPaymentsPageState extends State<UpiPaymentsPage>
+    with WidgetsBindingObserver {
   List<Data> items = [];
   String? cursor;
+  String status = '';
+  String evidence = '';
   String? error;
   bool loading = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        !loading &&
+        ModalRoute.of(context)?.isCurrent == true) {
+      load();
+    }
   }
 
   Future<void> load({bool next = false}) async {
@@ -39,9 +59,15 @@ class _UpiPaymentsPageState extends State<UpiPaymentsPage> {
       error = null;
     });
     try {
-      final path = next
-          ? '$_attempts?cursor=${Uri.encodeQueryComponent(cursor!)}'
-          : _attempts;
+      await retryUpiOutcome(widget.ledger.api);
+      final query = Uri(
+        queryParameters: {
+          if (next && cursor != null) 'cursor': cursor!,
+          if (status.isNotEmpty) 'status': status,
+          if (evidence.isNotEmpty) 'evidence': evidence,
+        },
+      ).query;
+      final path = '$_attempts?$query';
       final result = await widget.ledger.api.request(path);
       final rows = (result['items'] as List).cast<Data>();
       if (!mounted) return;
@@ -90,6 +116,58 @@ class _UpiPaymentsPageState extends State<UpiPaymentsPage> {
             icon: const Icon(Icons.qr_code_scanner),
             label: const Text('Scan a payee QR'),
           ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: status,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Payment status'),
+            items: const [
+              DropdownMenuItem(value: '', child: Text('All statuses')),
+              DropdownMenuItem(value: 'ready', child: Text('Prepared')),
+              DropdownMenuItem(
+                value: 'awaiting_confirmation',
+                child: Text('Awaiting confirmation'),
+              ),
+              DropdownMenuItem(
+                value: 'launch_failed',
+                child: Text('Could not open a UPI app'),
+              ),
+              DropdownMenuItem(
+                value: 'recorded_manually',
+                child: Text('Recorded manually'),
+              ),
+            ],
+            onChanged: loading
+                ? null
+                : (value) {
+                    setState(() => status = value ?? '');
+                    load();
+                  },
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: evidence,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Payment evidence'),
+            items: const [
+              DropdownMenuItem(value: '', child: Text('All evidence')),
+              DropdownMenuItem(value: 'unverified', child: Text('Unverified')),
+              DropdownMenuItem(
+                value: 'manual',
+                child: Text('Recorded manually'),
+              ),
+              DropdownMenuItem(
+                value: 'statement',
+                child: Text('Uploaded statement'),
+              ),
+            ],
+            onChanged: loading
+                ? null
+                : (value) {
+                    setState(() => evidence = value ?? '');
+                    load();
+                  },
+          ),
           if (loading) const LinearProgressIndicator(),
           if (error != null) ...[
             Text(error!),
@@ -116,7 +194,12 @@ class _UpiPaymentsPageState extends State<UpiPaymentsPage> {
                                 .map((row) => text(row.data, 'name'))
                                 .firstOrNull ??
                             'Category unavailable',
-                        text(item, 'createdAt').split('T').first,
+                        DateTime.parse(text(item, 'createdAt'))
+                            .toUtc()
+                            .add(const Duration(hours: 5, minutes: 30))
+                            .toIso8601String()
+                            .split('T')
+                            .first,
                         label(item),
                         if (item['payeeMasked'] case final String payee) payee,
                         if (item['evidenceStatus'] == 'statement')
@@ -288,30 +371,14 @@ class _UpiDraftPageState extends State<_UpiDraftPage> {
               ))['attemptId']
               as String;
       if (!mounted) return;
-      final resultPath = '$_attempts/$attemptId/outcome';
-      final claim = await api.request(
-        resultPath,
-        method: 'POST',
-        body: {'idempotencyKey': _ids.v4(), 'result': 'claim'},
-      );
-      if (!mounted) return;
-      if (claim['launchAllowed'] != true) {
-        setState(() {
-          launched = true;
-          message = 'Check this attempt in your payment history.';
-        });
-        return;
-      }
-      launched = true;
-      final result =
-          await const MethodChannel(
-            'fintrack/upi',
-          ).invokeMethod<String>('open', payment.forHandoff(paise)) ??
-          'unknown';
-      await api.request(
-        resultPath,
-        method: 'POST',
-        body: {'idempotencyKey': _ids.v4(), 'result': result},
+      setState(() => launched = true);
+      final result = await handoffUpi(
+        api,
+        attemptId!,
+        payment.forHandoff(paise),
+        (payload) => const MethodChannel(
+          'fintrack/upi',
+        ).invokeMethod<String>('open', payload),
       );
       if (!mounted) return;
       if (result == 'launch_failed') {
@@ -505,9 +572,11 @@ class _RecordUpiPageState extends State<_RecordUpiPage> {
 
   Future<void> save() async {
     if (busy || (expenseId == null && method == null)) return;
+    setState(() => busy = true);
     final item = widget.item;
     final confirmed = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('Record a paid expense?'),
         content: const Text(
@@ -525,7 +594,11 @@ class _RecordUpiPageState extends State<_RecordUpiPage> {
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (!mounted) return;
+    if (confirmed != true) {
+      setState(() => busy = false);
+      return;
+    }
     setState(() {
       busy = true;
       error = null;
@@ -534,21 +607,16 @@ class _RecordUpiPageState extends State<_RecordUpiPage> {
       final expense = widget.ledger.active
           .where((row) => row.id == expenseId)
           .firstOrNull;
-      await widget.ledger.api.request(
-        '$_attempts/${item['attemptId']}/record',
-        method: 'POST',
-        body: {
-          'idempotencyKey': _ids.v4(),
-          'expectedRevision': item['revision'],
-          'paymentMethodId': expense == null
-              ? method
-              : text(expense.data, 'paymentMethodId'),
-          if (expense == null)
-            'postingDate': date
-          else
-            'existingExpenseId': expense.id,
-        },
-      );
+      await recordUpiExpense(widget.ledger.api, item['attemptId'] as String, {
+        'expectedRevision': item['revision'],
+        'paymentMethodId': expense == null
+            ? method
+            : text(expense.data, 'paymentMethodId'),
+        if (expense == null)
+          'postingDate': date
+        else
+          'existingExpenseId': expense.id,
+      });
       await widget.ledger.sync();
       if (mounted) Navigator.pop(context);
     } catch (failure) {

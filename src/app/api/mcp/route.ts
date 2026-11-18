@@ -2,7 +2,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { ApiError } from '@/lib/server/api-error';
 import { rateLimit } from '@/lib/server/credentials';
 import { body } from '@/lib/server/http';
-import { connectorPrincipal, mcpConfig, mcpEnabled, mcpWritesEnabled, readScope, writeScope } from '@/lib/server/mcp-auth';
+import { connectorPrincipal, mcpConfig, mcpEnabled, mcpWritesEnabled, readScope, writeScope, paymentsScope } from '@/lib/server/mcp-auth';
 import { financeMcpServer, writeTools } from '@/lib/server/mcp-tools';
 
 export const runtime = 'nodejs';
@@ -27,10 +27,11 @@ async function handle(request: Request) {
     const message = parsedBody as { method?: unknown; params?: { name?: unknown } } | null;
     const name = message?.params?.name;
     const writes = mcpWritesEnabled() && principal.scopes.includes(writeScope);
+    if (message?.method === 'tools/call' && name === 'list_upi_attempts' && !principal.scopes.includes(paymentsScope)) return challenge(metadata, 403, paymentsScope);
     if (message?.method === 'tools/call' && typeof name === 'string' && writeTools.has(name) && !writes) return challenge(metadata, 403, writeScope);
 
     const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true, sessionIdGenerator: undefined });
-    const server = financeMcpServer(principal.grant, writes);
+    const server = financeMcpServer(principal.grant, writes, principal.scopes.includes(paymentsScope));
     await server.connect(transport);
     try {
       const response = await transport.handleRequest(request, { parsedBody });

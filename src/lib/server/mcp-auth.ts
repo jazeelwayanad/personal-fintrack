@@ -6,9 +6,11 @@ import { ApiError } from './api-error';
 import { authenticate } from './credentials';
 import { secretKey } from './integration-secret';
 import { lockLedger } from './sync';
+import { upiEnabled } from './upi';
 
 export const readScope = 'ledger:read';
 export const writeScope = 'ledger:write';
+export const paymentsScope = 'payments:read';
 export const mcpEnabled = () => process.env.MCP_READ_ENABLED === 'true';
 export const mcpWritesEnabled = () => process.env.MCP_WRITE_ENABLED === 'true';
 export const allowedClients = () => (process.env.MCP_ALLOWED_CLIENTS ?? '').split(',').map(value => value.trim()).filter(Boolean);
@@ -70,7 +72,7 @@ export async function beginIdentityLink(userId: string, input: unknown, req: Req
   const state = randomBytes(32).toString('base64url');
   const nonce = randomBytes(32).toString('base64url');
   const verifier = randomBytes(32).toString('base64url');
-  const proof = await new SignJWT({ state, nonce, verifier }).setSubject(userId).setAudience('fintrack-mcp-link')
+  const proof = await new SignJWT({ state, nonce, verifier, sessionVersion: auth.sessionVersion }).setSubject(userId).setAudience('fintrack-mcp-link')
     .setExpirationTime('10m').setProtectedHeader({ alg: 'HS256' }).sign(secretKey(process.env.MCP_STATE_KEY));
   const url = new URL('/authorize', issuer);
   url.search = new URLSearchParams({
@@ -102,8 +104,11 @@ export async function completeIdentityLink(userId: string, proof: string, params
     issuer: issuer.href, audience: clientId, algorithms: ['RS256'], requiredClaims: ['exp', 'sub', 'nonce'],
   })).payload;
   if (identity.nonce !== payload.nonce) throw new ApiError(400, 'Invalid identity link.');
+  if (Array.isArray(identity.aud) && identity.aud.length > 1 && identity.azp !== clientId) throw new ApiError(400, 'Invalid identity audience.');
   await prisma.$transaction(async tx => {
     await lockLedger(tx, userId);
+    const owner = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { sessionVersion: true } });
+    if (owner.sessionVersion !== payload.sessionVersion) throw new ApiError(400, 'Sign in again to link this identity.');
     const assigned = await tx.mcpIdentity.findUnique({ where: { issuer_subject: { issuer: issuer.href, subject: identity.sub! } } });
     if (assigned && assigned.userId !== userId) throw new ApiError(409, 'This identity is linked to another FinTrack account.');
     const previous = await tx.mcpIdentity.findUnique({ where: { userId_issuer: { userId, issuer: issuer.href } } });
@@ -113,7 +118,7 @@ export async function completeIdentityLink(userId: string, proof: string, params
 }
 
 const grantInput = z.discriminatedUnion('action', [
-  z.strictObject({ action: z.literal('grant'), clientId: z.string().min(1).max(200), write: z.boolean() }),
+  z.strictObject({ action: z.literal('grant'), clientId: z.string().min(1).max(200), write: z.boolean(), payments: z.boolean().default(false) }),
   z.strictObject({ action: z.literal('revoke'), grantId: z.uuid() }),
 ]);
 export async function updateGrant(userId: string, input: unknown) {
@@ -125,11 +130,12 @@ export async function updateGrant(userId: string, input: unknown) {
       await tx.mcpGrant.updateMany({ where: { userId, id: command.grantId, revokedAt: null }, data: { revokedAt: new Date() } });
       return { saved: true };
     }
-    if (!allowedClients().includes(command.clientId) || (command.write && !mcpWritesEnabled())) throw new ApiError(400, 'This connector permission is unavailable.');
+    if (!allowedClients().includes(command.clientId) || (command.write && !mcpWritesEnabled()) || (command.payments && !upiEnabled())) throw new ApiError(400, 'This connector permission is unavailable.');
     const identity = await tx.mcpIdentity.findUnique({ where: { userId_issuer: { userId, issuer: issuer.href } } });
     if (!identity) throw new ApiError(400, 'Link an identity first.');
     await tx.mcpGrant.updateMany({ where: { userId, issuer: issuer.href, clientId: command.clientId, revokedAt: null }, data: { revokedAt: new Date() } });
-    await tx.mcpGrant.create({ data: { userId, issuer: issuer.href, subject: identity.subject, clientId: command.clientId, scopes: command.write ? [readScope, writeScope] : [readScope] } });
+    const scopes = [readScope, ...(command.write ? [writeScope] : []), ...(command.payments ? [paymentsScope] : [])];
+    await tx.mcpGrant.create({ data: { userId, issuer: issuer.href, subject: identity.subject, clientId: command.clientId, scopes } });
     return { saved: true };
   });
 }
@@ -139,5 +145,5 @@ export async function connectorSettings(userId: string) {
     prisma.mcpIdentity.findUnique({ where: { userId_issuer: { userId, issuer: issuer.href } }, select: { subject: true } }),
     prisma.mcpGrant.findMany({ where: { issuer: issuer.href, userId, revokedAt: null }, select: { id: true, clientId: true, scopes: true }, orderBy: { createdAt: 'desc' } }),
   ]);
-  return { linked: !!identity, grants, clients: allowedClients(), writesEnabled: mcpWritesEnabled() };
+  return { linked: !!identity, grants, clients: allowedClients(), writesEnabled: mcpWritesEnabled(), paymentsEnabled: upiEnabled() };
 }

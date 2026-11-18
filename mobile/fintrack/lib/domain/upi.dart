@@ -42,9 +42,7 @@ class UpiQr {
     for (final field in payload.substring('upi://pay?'.length).split('&')) {
       final separator = field.indexOf('=');
       if (separator < 1) throw invalid;
-      final key = Uri.decodeQueryComponent(
-        field.substring(0, separator),
-      ).toLowerCase();
+      final key = Uri.decodeQueryComponent(field.substring(0, separator));
       final value = Uri.decodeQueryComponent(field.substring(separator + 1));
       if (!RegExp(r'^[a-z][a-z0-9_]*$').hasMatch(key) ||
           params.containsKey(key) ||
@@ -70,6 +68,9 @@ class UpiQr {
   }
 
   String forHandoff(int paise) {
+    if (paise <= 0 || paise > 1000000000000) {
+      throw const FormatException('Enter a valid payment amount.');
+    }
     if (fixedPaise != null || preservePayload) return payload;
     final rupees = paise ~/ 100;
     final minor = (paise % 100).toString().padLeft(2, '0');

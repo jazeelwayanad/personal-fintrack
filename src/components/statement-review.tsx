@@ -8,7 +8,7 @@ import { buttonClass, Field, inputClass } from './finance-forms';
 import { useFinance } from './finance-provider';
 
 type Statement = { date: string; amountPaise: number; direction: 'debit'; reference: string };
-type Candidate = { attemptId: string; revision: number; purpose: string; referenceMatched: boolean };
+type Candidate = { attemptId: string; revision: number; purpose: string; categoryId: string; referenceMatched: boolean };
 type Row = { row: Statement; duplicate: boolean; candidates: Candidate[] };
 
 async function post(path: string, payload: object) {
@@ -96,7 +96,7 @@ export function StatementReview() {
         <Field label="Expense to link"><select className={inputClass} value={existingExpenseId} onChange={event => { setExistingExpenseId(event.target.value); setKey(''); }}>
           <option value="">Record a new expense</option>
           {records.filter(record => !record.deleted && record.kind === 'transaction' && record.revision > 0 && s(record.data, 'type') === 'expense'
-            && s(record.data, 'date') === selected!.row.date && n(record.data, 'amount') === selected!.row.amountPaise)
+            && s(record.data, 'categoryId') === candidate.categoryId && s(record.data, 'date') === selected!.row.date && n(record.data, 'amount') === selected!.row.amountPaise)
             .map(record => <option key={record.id} value={record.id}>{s(record.data, 'description') || record.id}</option>)}
         </select></Field>
         {!existingExpenseId && <Field label="Payment method"><select className={inputClass} value={method} onChange={event => { setMethod(event.target.value); setKey(''); }} required>

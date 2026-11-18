@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import type { FinancialRecord, McpGrant } from '@prisma/client';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
@@ -7,7 +7,9 @@ import { checkSpending, monthlyForecast, occurrences, summary, todayIndia } from
 import { dateSchema, type Document, number as n, string as s } from '@/lib/finance/model';
 import { ApiError } from './api-error';
 import { fingerprint, secretKey } from './integration-secret';
-import { mcpWritesEnabled } from './mcp-auth';
+import { readCursor, signCursor } from './cursor';
+import { listUpiAttempts, upiEnabled } from './upi';
+import { mcpWritesEnabled, paymentsScope, readScope } from './mcp-auth';
 import { applyLedgerMutation, ensureImported, wire, withLedger } from './sync';
 
 const type = z.enum(['income', 'expense']);
@@ -60,26 +62,15 @@ function orderedPage<T extends { id: string; date: string }>(
   rows: T[], userId: string, operation: string, input: { limit: number; cursor?: string },
 ) {
   const { limit, cursor, ...filter } = input;
-  const secret = secretKey(process.env.MCP_STATE_KEY);
-  const parts = cursor?.split('.');
-  let anchor: { id: string; date: string } | undefined;
-  if (parts) {
-    const [encoded, signature] = parts;
-    const expected = fingerprint(secret, { userId, operation, filter, encoded });
-    if (parts.length !== 2 || !/^[0-9a-f]{64}$/.test(signature ?? '')
-      || !timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signature, 'hex'))) throw new ApiError(400, 'Invalid cursor.');
-    const parsed = z.strictObject({ id, date: dateSchema }).safeParse(JSON.parse(Buffer.from(encoded, 'base64url').toString()));
-    if (!parsed.success) throw new ApiError(400, 'Invalid cursor.');
-    anchor = parsed.data;
-  }
+  const context = { userId, operation, filter };
+  const anchor = cursor ? readCursor(cursor, z.strictObject({ id, date: dateSchema }), context) : undefined;
   const compare = (a: { id: string; date: string }, b: { id: string; date: string }) =>
     a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
   const candidates = rows.sort(compare).filter(row => !anchor || compare(row, anchor) > 0);
   const items = candidates.slice(0, limit);
   const last = items.at(-1);
   if (!last || candidates.length <= limit) return { items, nextCursor: null };
-  const encoded = Buffer.from(JSON.stringify({ id: last.id, date: last.date })).toString('base64url');
-  return { items, nextCursor: encoded + '.' + fingerprint(secret, { userId, operation, filter, encoded }) };
+  return { items, nextCursor: signCursor({ id: last.id, date: last.date }, context) };
 }
 function result(value: Record<string, unknown>) {
   return { structuredContent: value, content: [{ type: 'text' as const, text: JSON.stringify(value) }] };
@@ -122,6 +113,7 @@ async function writeTransaction(grant: McpGrant, operation: string, input: z.inf
     if ('patch' in input) {
       const row = await tx.financialRecord.findFirst({ where: { userId, id: input.id, kind: 'transaction', deleted: false } });
       if (!row) throw new ApiError(404, 'Transaction not found.');
+      if (s(wire(row).data, 'date') > todayIndia()) throw new ApiError(400, 'Use a plan for future income or expenses.');
       if (row.revision !== input.expectedRevision) throw new ApiError(409, 'Transaction changed. Read it again before updating.');
       if (s(wire(row).data, 'occurrenceId') || await tx.upiPaymentAttempt.findUnique({ where: { userId_ledgerId: { userId, ledgerId: row.id } }, select: { id: true } })) {
         throw new ApiError(409, 'Edit linked payments in FinTrack.');
@@ -148,7 +140,7 @@ async function writeTransaction(grant: McpGrant, operation: string, input: z.inf
   });
 }
 
-export function financeMcpServer(grant: McpGrant, write: boolean) {
+export function financeMcpServer(grant: McpGrant, write: boolean, payments = false) {
   const server = new McpServer({ name: 'FinTrack', version: '1.0.0' });
   function tool<I extends z.ZodObject, O extends z.ZodObject>(
     name: string, description: string, inputSchema: I, outputSchema: O, run: (input: z.output<I>) => Promise<unknown>,
@@ -159,6 +151,9 @@ export function financeMcpServer(grant: McpGrant, write: boolean) {
       annotations: { readOnlyHint: readOnly, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     }, async (raw: unknown) => {
       try {
+        const scope = name === 'list_upi_attempts' ? paymentsScope : readScope;
+        const active = await prisma.mcpGrant.findFirst({ where: { id: grant.id, userId: grant.userId, revokedAt: null, scopes: { has: scope } }, select: { id: true } });
+        if (!active) throw new ApiError(403, 'The connector grant is unavailable.');
         const parsed = outputSchema.parse(await run(z.parse(inputSchema, raw)));
         if (readOnly) await prisma.mcpAuditEvent.create({ data: audit(grant, name, 'accepted') });
         return result(parsed as Record<string, unknown>);
@@ -240,6 +235,36 @@ export function financeMcpServer(grant: McpGrant, write: boolean) {
     const listing = orderedPage(matches, grant.userId, 'schedule', input);
     return { items: listing.items.map(row => row.value), nextCursor: listing.nextCursor, syncedAt };
   });
+  if (payments && upiEnabled()) {
+    tool('list_upi_attempts', 'Read your payment attempts and evidence status. A reported app outcome does not verify a debit.', z.strictObject({
+      ...windowFields,
+      status: z.enum(['ready', 'awaiting_confirmation', 'launch_failed', 'recorded_manually']).optional(),
+      evidence: z.enum(['unverified', 'manual', 'statement']).optional(),
+    }).refine(windowValid, 'Choose a valid date window of up to 366 days.'), page(z.strictObject({
+      attemptId: z.uuid(), amountPaise: paise, date: dateSchema, categoryId: id,
+      status: z.enum(['ready', 'awaiting_confirmation', 'launch_failed', 'recorded_manually']),
+      evidence: z.enum(['unverified', 'manual', 'statement']), ledgerId: id.nullable(), reviewRequired: z.boolean(),
+    })), async input => {
+      const { cursor, ...filter } = input;
+      const context = { userId: grant.userId, operation: 'upi', filter };
+      const after = cursor ? readCursor(cursor, z.uuid(), context) : undefined;
+      const params = new URLSearchParams({ from: input.from, to: input.to, limit: String(input.limit) });
+      if (input.status) params.set('status', input.status);
+      if (input.evidence) params.set('evidence', input.evidence);
+      if (after) params.set('cursor', after);
+      const listing = await listUpiAttempts(grant.userId, params, false);
+      return {
+        items: listing.items.map(item => ({
+          attemptId: item.attemptId, amountPaise: item.amountPaise,
+          date: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(item.createdAt)),
+          categoryId: item.categoryId, status: item.status, evidence: item.evidenceStatus,
+          ledgerId: item.ledgerId, reviewRequired: item.reviewRequired,
+        })),
+        nextCursor: listing.nextCursor ? signCursor(listing.nextCursor, context) : null,
+        syncedAt: new Date().toISOString(),
+      };
+    });
+  }
   if (write) {
     tool('create_transaction', 'Record income already received or an expense already paid. Does not move money.', create, z.strictObject({
       id, revision: z.number().int(), date: dateSchema, type, amountPaise: paise, source: z.literal('manual'),
@@ -252,6 +277,8 @@ export function financeMcpServer(grant: McpGrant, write: boolean) {
   for (const kind of ['categories', 'paymentMethods'] as const) {
     const uri = 'fintrack://ledger/' + (kind === 'categories' ? 'categories' : 'payment-methods');
     server.registerResource(kind, uri, { mimeType: 'application/json' }, async () => {
+      const active = await prisma.mcpGrant.findFirst({ where: { id: grant.id, userId: grant.userId, revokedAt: null, scopes: { has: readScope } }, select: { id: true } });
+      if (!active) throw new ApiError(403, 'The connector grant is unavailable.');
       const { records, syncedAt } = await readLedger(grant.userId);
       await prisma.mcpAuditEvent.create({ data: audit(grant, 'resource:' + kind, 'accepted') });
       return { contents: [{ uri, mimeType: 'application/json', text: JSON.stringify({ items: ledgerOptions(records)[kind], syncedAt }) }] };

@@ -6,10 +6,11 @@ import { buttonClass, Field, inputClass } from './finance-forms';
 type Settings = {
   linked: boolean;
   writesEnabled: boolean;
+  paymentsEnabled: boolean;
   clients: string[];
   grants: { id: string; clientId: string; scopes: string[] }[];
 };
-type Command = { action: 'grant'; clientId: string; write: boolean } | { action: 'revoke'; grantId: string };
+type Command = { action: 'grant'; clientId: string; write: boolean; payments: boolean } | { action: 'revoke'; grantId: string };
 
 async function settingsRequest(path: string, payload?: object) {
   const response = await fetch('/api/v1/mcp' + path, payload && {
@@ -26,6 +27,7 @@ export function McpSettings({ linkFailed }: { linkFailed: boolean }) {
   const [busy, setBusy] = useState(false);
   const [client, setClient] = useState('');
   const [write, setWrite] = useState(false);
+  const [payments, setPayments] = useState(false);
   useEffect(() => {
     let active = true;
     settingsRequest('').then(data => { if (active) setSettings(data); }).catch(error => { if (active) setError(error.message); });
@@ -56,6 +58,7 @@ export function McpSettings({ linkFailed }: { linkFailed: boolean }) {
       await settingsRequest('', command);
       setSettings(await settingsRequest(''));
       setWrite(false);
+      setPayments(false);
     });
   }
 
@@ -69,17 +72,18 @@ export function McpSettings({ linkFailed }: { linkFailed: boolean }) {
     </form>}
     {settings?.linked && <>
       <p className="text-sm">Connectors can use data that has synced to FinTrack.</p>
-      <form className="max-w-md space-y-3" onSubmit={event => { event.preventDefault(); void change({ action: 'grant', clientId: client, write }); }}>
+      <form className="max-w-md space-y-3" onSubmit={event => { event.preventDefault(); void change({ action: 'grant', clientId: client, write, payments }); }}>
         <Field label="Connector"><select className={inputClass} value={client} onChange={event => setClient(event.target.value)} required>
           <option value="">Choose a connector</option>
           {settings.clients.map(id => <option key={id} value={id}>{id}</option>)}
         </select></Field>
         {settings.writesEnabled && <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={write} onChange={event => setWrite(event.target.checked)}/>Allow this connector to record and reclassify manual ledger entries.</label>}
+        {settings.paymentsEnabled && <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={payments} onChange={event => setPayments(event.target.checked)}/>Allow access to payment attempt history and evidence status.</label>}
         <button className={buttonClass} disabled={busy || !client}>Save connector access</button>
       </form>
       <ul className="space-y-2">
         {settings.grants.map(grant => <li key={grant.id} className="flex flex-wrap items-center justify-between gap-2 border-t py-2 text-sm">
-          <span className="break-all">{grant.clientId} · {grant.scopes.includes('ledger:write') ? 'Read and write' : 'Read only'}</span>
+          <span className="break-all">{grant.clientId} · {grant.scopes.includes('ledger:write') ? 'Read and write' : 'Read only'}{grant.scopes.includes('payments:read') ? ' · Payment history' : ''}</span>
           <button type="button" className="min-h-11 px-3 text-destructive" disabled={busy} onClick={() => void change({ action: 'revoke', grantId: grant.id })}>Revoke access</button>
         </li>)}
       </ul>

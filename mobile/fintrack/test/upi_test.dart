@@ -32,4 +32,19 @@ void main() {
       throwsFormatException,
     );
   });
+  test(
+    'refuses handler-dependent uppercase field names and invalid handoff amounts',
+    () {
+      expect(
+        () => UpiQr.parse('upi://pay?PA=other@bank&pa=test@bank'),
+        throwsFormatException,
+      );
+      expect(
+        () => UpiQr.parse('upi://pay?pa=test@bank&AM=25.00'),
+        throwsFormatException,
+      );
+      final qr = UpiQr.parse('upi://pay?pa=test@bank');
+      expect(() => qr.forHandoff(0), throwsFormatException);
+    },
+  );
 }
